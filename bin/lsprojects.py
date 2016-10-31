@@ -13,7 +13,7 @@ import sys
 __author__ = "Shawn Davis <shawn@ptltd.co>"
 __command__ = os.path.basename(sys.argv[0])
 __date__ = "2016-10-30"
-__version__ = "0.7.1-d"
+__version__ = "0.8.0-d"
 
 # Constants
 
@@ -55,10 +55,12 @@ The ``tags``, ``type``, ``scope``, and ``status`` may be whatever you like.
 
 #### Sections
 
-Attributes of ``[project]`` section are used as is. ``[business]`` ``[client]``
-are used to identify the beneficiary and/or developer of the project.
+Attributes of ``[project]`` section are used as is. ``[business]`` and
+``[client]`` are used to identify the beneficiary and/or developer of the
+project.
 
-Other sections may be added as you see fit.
+Other sections may be added as you see fit. For example, the ``[domain]``
+section above.
 
 #### Additional Data
 
@@ -67,6 +69,19 @@ Additional data may be displayed in the list output and when using the
 
 - The SCM and disk usage of the project may be automatically determined.
 - The project tree is obtained with the ``tree`` command.
+
+#### Generating a README
+
+The ``--name`` switch searches for a specific project and (if found) outputs
+project information in [Markdown][markdown] format:
+
+[markdown]: http://daringfireball.net/projects/markdown/
+
+    cd example_project;
+    lsprojects --name=example_project > README.markdown;
+
+Although you'll likely want to customize the output, this is handy for
+creating (or recreating) a README for the project.
 
 """
 
@@ -299,10 +314,13 @@ def autoload_project(name, include_disk=False, path="./"):
     :returns: A ``Project`` instance or ``None`` if the project could not be found.
 
     """
+    name = name.lower()
     names = (
         name,
+
         name.replace(".", "_"),
         name.replace(" ", "-"),
+        name.replace(" ", "_"),
     )
 
     for name in names:
@@ -520,7 +538,7 @@ class Package(object):
     def to_markdown(self):
         a = list()
 
-        a.append("### %s" % self.title)
+        a.append("**%s**" % self.title)
         a.append("")
 
         if self.note:
@@ -532,6 +550,9 @@ class Package(object):
 
         # Example: [Link text](http://example.com/>)
         if self.has_links:
+            a.append("Links:")
+            a.append("")
+
             if self.home:
                 a.append("- [Home](%s)" % self.home)
 
@@ -543,11 +564,10 @@ class Package(object):
 
             a.append("")
 
-        a.append("To install manually:")
         if self.cmd:
+            a.append("To install manually:")
+            a.append("")
             a.append("    pip install %s" % self.cmd)
-        else:
-            a.append("    pip install %s" % self.name)
 
         a.append("")
         return "\n".join(a)
@@ -672,6 +692,8 @@ class Project(object):
 
         """
         # TODO: Create a TEMPLATE for markdown export and make this configurable from a switch.
+
+        # Build the top/main section of the output.
         a = list()
         a.append("# %s" % self.title)
         a.append("")
@@ -687,10 +709,12 @@ class Project(object):
 
         a.append("")
 
+        # Add the description.
         if self.description:
             a.append(self.description)
             a.append("")
 
+        # Add each section to the output.
         context = self.get_context()
         for key, value in context.items():
             if isinstance(value, Section):
@@ -698,6 +722,24 @@ class Project(object):
             else:
                 pass
 
+        # List the dependencies.
+        deps = self._get_dependencies()
+        if deps:
+            a.append("## Dependencies")
+            a.append("")
+
+            for env, packages in deps:
+
+                if len(packages) == 0:
+                    continue
+
+                a.append("### %s" % env)
+                a.append("")
+
+                for p in packages:
+                    a.append(p.to_markdown())
+
+        # Include the project tree.
         a.append("## Tree")
         a.append("")
         status, output = commands.getstatusoutput("tree %s" % self.root)
@@ -716,12 +758,19 @@ class Project(object):
         return os.path.exists(path)
 
     def _get_dependencies(self):
+        """Get project dependencies from a ``packages.ini`` file.
+
+        :rtype list
+        :returns: A list of ``(env, packages)``.
+        """
+        # TODO: Add public documentation for project dependencies.
         locations = (
-            os.path.join("deploy", "requirements", "config.ini"),
-            os.path.join("requirements/config.ini"),
+            os.path.join("deploy", "requirements", "packages.ini"),
+            os.path.join("requirements/packages.ini"),
             os.path.join("requirements.ini"),
         )
 
+        a = list()
         for i in locations:
             if self._file_exists(i):
                 path = os.path.join(self.root, i)
@@ -730,7 +779,9 @@ class Project(object):
                 ini.read(path)
 
                 for env in ENVIRONMENTS:
-                    a = get_packages(ini, env)
+                    a.append((env, get_packages(ini, env)))
+
+        return a
 
     def _get_disk(self):
         cmd = "du -hs %s | awk -F ' ' '{print $1}'" % self.root

@@ -98,6 +98,18 @@ Additional data may be displayed in the list output and when using the
 - The SCM and disk usage of the project may be automatically determined.
 - The project tree is obtained with the ``tree`` command.
 
+#### Generating a README
+
+The ``--name`` switch searches for a specific project and (if found) outputs
+project information in [Markdown][markdown] format:
+
+[markdown]: http://daringfireball.net/projects/markdown/
+
+    cd example_project;
+    lsprojects --name=example_project > README.markdown;
+
+Although you'll likely want to customize the output, this is handy for
+creating (or recreating) a README for the project.
 
 ### randompw
 

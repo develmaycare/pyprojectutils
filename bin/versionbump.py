@@ -263,6 +263,42 @@ def main():
         print(TEMPLATE)
         sys.exit(EXIT_OK)
 
+    # Get the project. Make sure it exists.
+    project = Project(args.project_name, args.path)
+    if not project.exists:
+        print("Project does not exist: %s" % project.name)
+        sys.exit(EXIT_INPUT)
+
+    # Get updated version info from input, or (by default) display the current version.
+    if args.major:
+        project.version.bump_major()
+    elif args.minor:
+        pass
+    elif args.patch:
+        pass
+
+    # Set the status.
+    if args.status:
+        project.version.bump_status(args.status)
+    else:
+        project.version.keep_status()
+
+    # Set the build.
+    if args.build:
+        pass
+    else:
+        pass
+
+    # Write the VERSION.txt file.
+    if project.has_version_txt:
+        write_file(project.version_txt, project.version.to_string())
+
+    # Write the version.py file.
+    if project.has_version_py:
+        write_file(project.version_py)
+
+    sys.exit()
+
     # Make sure the project root exists.
     project_name = args.project_name
     project_root = os.path.join(args.path, project_name)
@@ -422,6 +458,102 @@ def write_file(path, content):
     with open(path, "wb") as f:
         f.write(content)
         f.close()
+
+
+class Project(object):
+    """Represents a project where a version/release is maintained."""
+
+    def __init__(self, name, path=None):
+        self.name = name
+        self.root = os.path.join(path or PROJECT_HOME, name)
+        self._version_py = None
+        self._version_txt = os.path.join(self.root, "VERSION.txt")
+
+        # Get the current version as a Version instance.
+        if self.has_version_txt:
+            self.current_version = Version(read_file(self._version_txt))
+        else:
+            self.current_version = Version("0.1.0-d")
+
+        # The next version starts as the current version.
+        self.version = Version(self.current_version.string)
+
+        # See if we can locate a version.py file.
+        for p in VERSION_PY_LOCATIONS:
+            version_py = p % {'project_name': name, 'project_root': self.root}
+            if os.path.exists(version_py):
+                self._version_py = version_py
+                break
+
+    @property
+    def exists(self):
+        return os.path.exists(self.root)
+
+    def get_version_txt(self):
+        """Get the path to the VERSION.txt file.
+
+        :rtype: str
+
+        """
+        return self._version_txt
+
+    @property
+    def has_version_py(self):
+        if self._version_py is None:
+            return False
+
+        return os.path.exists(self._version_py)
+
+    @property
+    def has_version_txt(self):
+        return os.path.exists(self._version_txt)
+
+
+class Version(object):
+    """Represents a version/release."""
+
+    def __init__(self, string):
+        self.object = semver.parse_version_info(string)
+        self.string = string
+
+    @property
+    def build(self):
+        return self.object.build
+
+    def get_tokens(self):
+        """Get the version as a dictionary.
+
+        :rtype: dict
+
+        """
+        tokens = semver.parse(self.string)
+
+        tokens['name'] = ""
+        tokens['now'] = NOW
+
+        if tokens['build'] is None:
+            tokens['build'] = ""
+
+        if tokens['prerelease'] is None:
+            tokens['prerelease'] = ""
+
+        return tokens
+
+    @property
+    def major(self):
+        return self.object.major
+
+    @property
+    def minor(self):
+        return self.object.minor
+
+    @property
+    def patch(self):
+        return self.object.patch
+
+    @property
+    def prerelease(self):
+        return self.object.prerelease
 
 # Kickoff
 if __name__ == "__main__":

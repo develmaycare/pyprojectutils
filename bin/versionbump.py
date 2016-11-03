@@ -13,8 +13,8 @@ import sys
 
 __author__ = "Shawn Davis <shawn@ptltd.co>"
 __command__ = os.path.basename(sys.argv[0])
-__date__ = "2016-10-31"
-__version__ = "0.9.1-d"
+__date__ = "2016-11021"
+__version__ = "0.9.2-d"
 
 # Constants
 
@@ -344,6 +344,7 @@ def main():
                 write_file(version_py, content)
 
     # Quit.
+    print "%s %s" % (project_name, new_version)
     sys.exit(EXIT_OK)
 
 

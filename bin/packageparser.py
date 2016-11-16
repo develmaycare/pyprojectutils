@@ -12,8 +12,8 @@ import sys
 
 __author__ = "Shawn Davis <shawn@ptltd.co>"
 __command__ = os.path.basename(sys.argv[0])
-__date__ = "2016-10-30"
-__version__ = "0.8.0-d"
+__date__ = "2016-11-16"
+__version__ = "0.2.0-d"
 
 # Constants
 
@@ -99,62 +99,11 @@ def main():
     parser = ArgumentParser(description=description, epilog=HELP, formatter_class=RawDescriptionHelpFormatter)
 
     parser.add_argument(
-        "-a",
-        "--all",
-        action="store_true",
-        dest="show_all",
-        help="Show projects even if there is no project.ini"
-    )
-
-    parser.add_argument(
-        "-c=",
-        "--client=",
-        dest="client_code",
-        help="Filter by client organization. Use ? to list organizations"
-    )
-
-    parser.add_argument(
-        "--dirty",
-        action="store_true",
-        dest="show_dirty",
-        help="Only show projects with dirty repos"
-    )
-
-    parser.add_argument(
-        "-d",
-        "--disk",
-        action="store_true",
-        dest="include_disk",
-        help="Calculate disk space. Takes longer to run."
-    )
-
-    parser.add_argument(
-        "-n=",
-        "--name=",
-        dest="project_name",
-        help="Find a project by name and display it's information."
-    )
-
-    parser.add_argument(
-        "-p=",
-        "--path=",
-        default=PROJECT_HOME,
-        dest="project_home",
-        help="Path to where projects are stored. Defaults to %s" % PROJECT_HOME
-    )
-
-    parser.add_argument(
-        "-s=",
-        "--status=",
-        dest="status",
-        help="Filter by project status. Use ? to list available statuses."
-    )
-
-    parser.add_argument(
-        "-t=",
-        "--type=",
-        dest="project_type",
-        help="Filter by project type. Use ? to list available types."
+        "-i=",
+        "--input=",
+        dest="input_file",
+        default="deploy/requirements/packages.ini",
+        help="The packages.ini file to load."
     )
 
     # Access to the version number requires special consideration, especially
@@ -947,6 +896,15 @@ class Project(object):
         # Set loaded status.
         self.is_loaded = True
         return True
+
+
+class Role(object):
+    """A role is a collection of features or services offered by a host. A host may have one role or many roles."""
+
+    def __init__(self, name, label=None):
+        self.label = label or name
+        self.name = name
+
 
 # Kickoff
 if __name__ == "__main__":

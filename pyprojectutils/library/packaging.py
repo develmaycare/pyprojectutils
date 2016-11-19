@@ -309,18 +309,15 @@ class PackageConfig(Config):
         :param env: Optional environment name by which to filter packages.
         :type env: str
 
-        :rtype: list
+        :rtype:
 
         """
-        a = list()
         for section_name in self._sections:
             section = self.get_section(section_name)
             if env and section.env != env:
                 continue
 
-            a.append(section)
-
-        return a
+            yield section
 
     def _load_section(self, name, values):
         manager = values.get("manager", "pip")

@@ -111,7 +111,8 @@ The following options are recognized:
     elif args.output == "command":
         pass
     elif args.output == "markdown":
-        pass
+        print("# Packages")
+        print("")
     elif args.output == "plain":
         pass
     elif args.output == "rst":
@@ -121,17 +122,16 @@ The following options are recognized:
         print("%s Packages" % project.title)
         print("=" * 105)
         print(
-            "%-40s %-12s %-10s"
-            % ("Package", "Environment", "Manager")
+            "%-40s %-10s %s"
+            % ("Package", "Manager", "Environment")
         )
         print("-" * 105)
 
-        for env, packages in deps:
-            for p in packages:
-                print(
-                    "%-40s %-12s %-10s"
-                    % (p.title, p.env, p.manager)
-                )
+        for p in project.get_requirements(env=args.env):
+            print(
+                "%-40s %-10s %s"
+                % (p.title, p.manager, p.env)
+            )
 
     # for env, packages in deps:
     #     if args.env and env != args.env:
@@ -154,10 +154,7 @@ The following options are recognized:
     #         for p in packages:
     #             print(p.get_command())
     #     elif args.output == "markdown":
-    #         print("# Packages")
-    #         print("")
-    #         for p in packages:
-    #             print(p.to_markdown())
+
     #     elif args.output == "plain":
     #         for p in packages:
     #             print(p.to_text())

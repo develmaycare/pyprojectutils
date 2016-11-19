@@ -243,6 +243,24 @@ class Project(Config):
 
         return a
 
+    def get_requirements(self, env=None):
+        locations = (
+            os.path.join("deploy", "requirements", "packages.ini"),
+            os.path.join("requirements/packages.ini"),
+            os.path.join("requirements.ini"),
+        )
+
+        for i in locations:
+            if self._file_exists(i):
+                path = os.path.join(self.root, i)
+
+                config = PackageConfig(path, debug=self.debug)
+                if config.load():
+                    return config.get_packages(env=env)
+
+
+        return None
+
     def load(self, include_disk=False):
         """Load the project.
 

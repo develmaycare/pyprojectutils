@@ -7,6 +7,77 @@ import sys
 from constants import ENVIRONMENTS, EXIT_OK, EXIT_OTHER, EXIT_USAGE, PROJECT_HOME
 from library.projects import autoload_project, get_project_types, get_project_clients, get_project_statuses, \
     get_projects
+from library.passwords import RandomPassword
+
+
+def generate_password():
+    """Generate a random password."""
+
+    __author__ = "Shawn Davis <shawn@ptltd.co>"
+    __date__ = "2016-11-19"
+    __help__ = """
+We often need to generate passwords automatically. This utility does just
+that. Upload it during deployment to create passwords on the fly.
+    """
+    __version__ = "0.10.0-d"
+
+    # Define options and arguments.
+    parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
+
+    parser.add_argument(
+        "--format=",
+        choices=["crypt", "md5", "plain", "htpasswd"],
+        default="plain",
+        dest="format",
+        help="Choose the format of the output.",
+        nargs="?"
+    )
+    parser.add_argument("--strong", action="store_true", help="Make the password stronger.")
+    parser.add_argument(
+        "-U",
+        action="store_true",
+        dest="use_unambiguous",
+        help="Avoid ambiguous characters."
+    )
+
+    # Access to the version number requires special consideration, especially
+    # when using sub parsers. The Python 3.3 behavior is different. See this
+    # answer: http://stackoverflow.com/questions/8521612/argparse-optional-subparser-for-version
+    # parser.add_argument('--version', action='version', version='%(prog)s 2.0')
+    parser.add_argument(
+        "-v",
+        action="version",
+        help="Show version number and exit.",
+        version=__version__
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        help="Show verbose version information and exit.",
+        version="%(prog)s" + " %s %s" % (__version__, __date__)
+    )
+
+    # This will display help or input errors as needed.
+    args = parser.parse_args()
+    # print args
+
+    password_length = 10
+    if args.strong:
+        password_length = 20
+
+    password = RandomPassword(password_length, use_unambiguous=args.use_unambiguous)
+
+    if args.format == "crypt":
+        print(password.to_crypt())
+    elif args.format == "htpasswd":
+        print(password.to_htpasswd())
+    elif args.format == "md5":
+        print(password.to_md5())
+    else:
+        print(password.plain_text)
+
+    # Quit.
+    sys.exit(EXIT_OK)
 
 
 def package_parser():

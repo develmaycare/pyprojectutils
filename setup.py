@@ -65,6 +65,7 @@ setup(
       'console_scripts': [
           'lspackages = pyprojectutils.cli:package_parser',
           'lsprojects = pyprojectutils.cli:project_parser',
+          'randompw = pyprojectutils.cli:generate_password',
       ],
     },
 )

@@ -212,7 +212,6 @@ Increment the version number immediately after checking out a release branch.
 	positional arguments:
 	  project_name          The name of the project. Typically, the directory name
 							in which the project is stored.
-	  string                The specific release string to assign.
 
 	optional arguments:
 	  -h, --help            show this help message and exit

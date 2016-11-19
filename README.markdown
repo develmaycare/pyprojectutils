@@ -240,7 +240,7 @@ Increment the version number immediately after checking out a release branch.
 	  -v                    Show version number and exit.
 	  --version             Show verbose version information and exit.
 
-    #### When to Use
+#### When to Use
 
 Generally, you want to increment the version number immediately after checking
 out a release branch. However, you may wish to bump the version any time

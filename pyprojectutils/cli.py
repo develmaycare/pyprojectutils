@@ -579,7 +579,7 @@ def version_update():
 
     __date__ = "2016-11-19"
     __help__ = """
-    #### When to Use
+#### When to Use
 
 Generally, you want to increment the version number immediately after checking
 out a release branch. However, you may wish to bump the version any time
@@ -654,7 +654,7 @@ represented by the MAJOR.MINOR string of the release.
 The version may be shown to Customers or Users.
 
     """
-    __version__ = "0.10.2-d"
+    __version__ = "0.10.3-d"
 
     # Define options and arguments.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)

@@ -654,7 +654,7 @@ represented by the MAJOR.MINOR string of the release.
 The version may be shown to Customers or Users.
 
     """
-    __version__ = "0.10.3-d"
+    __version__ = "0.11.0-d"
 
     # Define options and arguments.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
@@ -662,12 +662,6 @@ The version may be shown to Customers or Users.
     parser.add_argument(
         "project_name",
         help="The name of the project. Typically, the directory name in which the project is stored."
-    )
-
-    parser.add_argument(
-        "string",
-        help="The specific release string to assign.",
-        nargs="?"
     )
 
     parser.add_argument(

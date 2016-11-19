@@ -2,6 +2,7 @@
 
 from ConfigParser import RawConfigParser
 from os.path import exists as path_exists
+from ..shortcuts import debug
 
 # Classes
 
@@ -9,8 +10,7 @@ from os.path import exists as path_exists
 class Config(object):
     """Generic representation of an INI file."""
 
-    def __init__(self, path, debug=False):
-        self.debug = debug
+    def __init__(self, path):
         self.is_loaded = None
         self.path = path
         self._sections = list()
@@ -44,9 +44,6 @@ class Config(object):
 
         # Iterate through the sections.
         for section_name in ini.sections():
-
-            if self.debug:
-                print "[%s]" % section_name
 
             # Values will be passed as kwargs to the Section instance.
             kwargs = {}

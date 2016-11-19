@@ -1,15 +1,13 @@
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
-import commands
-from ConfigParser import RawConfigParser
-import os
 from datetime import datetime
+from string import Template
 import sys
 from constants import ENVIRONMENTS, EXIT_OK, EXIT_INPUT, EXIT_OTHER, EXIT_USAGE, PROJECT_HOME
 from library.projects import autoload_project, get_project_types, get_project_clients, get_project_statuses, \
     get_projects, Project
 from library.passwords import RandomPassword
 from library.releases import Version
-from shortcuts import write_file
+from shortcuts import read_file, write_file
 
 
 def generate_password():
@@ -19,9 +17,9 @@ def generate_password():
     __date__ = "2016-11-19"
     __help__ = """
 We often need to generate passwords automatically. This utility does just
-that. Upload it during deployment to create passwords on the fly.
+that. Install pyprojectutils it during deployment to create passwords on the fly.
     """
-    __version__ = "0.10.0-d"
+    __version__ = "0.10.1-d"
 
     # Define options and arguments.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
@@ -87,6 +85,14 @@ def package_parser():
 
     __date__ = "2016-11-19"
     __help__ = """
+#### Location of the INI
+
+The command will look for the ``packages.ini`` file in these locations within project root:
+
+1. ``deploy/requirements/packages.ini``
+2. ``requirements/packages.ini``
+3. ``requirements.ini``
+
 #### Format of INI
 
 The ``packages.ini`` contains a section for each package.
@@ -288,7 +294,7 @@ Several output formats are supported. All are sent to standard out unless a file
 def project_parser():
     """Find, parse, and collect project information."""
 
-    __date__ = "2016-11-18"
+    __date__ = "2016-11-19"
     __help__ = """
 #### Format of INI
 
@@ -349,7 +355,6 @@ creating (or recreating) a README for the project.
 
 """
     __version__ = "1.0.0-d"
-
     # Define options and arguments.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
 
@@ -576,80 +581,80 @@ def version_update():
     __help__ = """
     #### When to Use
 
-    Generally, you want to increment the version number immediately after checking
-    out a release branch. However, you may wish to bump the version any time
-    during development, especially during early development where the MINOR
-    and PATCH versions are changing frequently.
+Generally, you want to increment the version number immediately after checking
+out a release branch. However, you may wish to bump the version any time
+during development, especially during early development where the MINOR
+and PATCH versions are changing frequently.
 
-    Here is an example workflow:
+Here is an example workflow:
 
-        # Get the current version and check out the next release.
-        versionbump myproject; # get the current version, example 1.2
-        git checkout -b release-1.3;
+    # Get the current version and check out the next release.
+    versionbump myproject; # get the current version, example 1.2
+    git checkout -b release-1.3;
 
-        # Bump automatically sets the next minor version with a status of d.
-        versionbump myproject -m -s d;
+    # Bump automatically sets the next minor version with a status of d.
+    versionbump myproject -m -s d;
 
-        # Commit the bump.
-        git commit -am "Version Bump";
+    # Commit the bump.
+    git commit -am "Version Bump";
 
-        # Go do the final work for the release.
-        # ...
+    # Go do the final work for the release.
+    # ...
 
-        # Merge the release.
-        git checkout master;
-        git merge --no-ff release-1.3;
-        git tag -a 1.3;
+    # Merge the release.
+    git checkout master;
+    git merge --no-ff release-1.3;
+    git tag -a 1.3;
 
-        # Merge back to development.
-        git checkout development;
-        git merge --no-ff release-1.3;
+    # Merge back to development.
+    git checkout development;
+    git merge --no-ff release-1.3;
 
-    #### Semantic Versioning
+#### Semantic Versioning
 
-    This utility makes use of [Semantic Versioning](semver.org). From the
-    documentation:
+This utility makes use of [Semantic Versioning](semver.org). From the
+documentation:
 
-    1. MAJOR version when you make incompatible API changes,
-    2. MINOR version when you add functionality in a backwards-compatible manner,
-       and
-    3. PATCH version when you make backwards-compatible bug fixes.
+1. MAJOR version when you make incompatible API changes,
+2. MINOR version when you add functionality in a backwards-compatible manner,
+   and
+3. PATCH version when you make backwards-compatible bug fixes.
 
-    Additional labels for pre-release and build metadata are available as
-    extensions to the MAJOR.MINOR.PATCH format.
+Additional labels for pre-release and build metadata are available as
+extensions to the MAJOR.MINOR.PATCH format.
 
-    **Status**
+**Status**
 
-    We define the following status codes:
+We define the following status codes:
 
-    - x Prototype, experimental. Use at your own risk.
-    - d Development. Unstable, untested.
-    - a Feature complete.
-    - b Ready for testing and QA.
-    - r Release candidate.
-    - o Obsolete, deprecated, or defect. End of life.
+- x Prototype, experimental. Use at your own risk.
+- d Development. Unstable, untested.
+- a Feature complete.
+- b Ready for testing and QA.
+- r Release candidate.
+- o Obsolete, deprecated, or defect. End of life.
 
-    You may of course use whatever status you like.
+You may of course use whatever status you like.
 
-    #### Release Versus Version
+#### Release Versus Version
 
-    **Release**
+**Release**
 
-    A *release* is a collection of updates representing a new version of the
-    product. A release is represented by the full string of MAJOR.MINOR.PATCH,
-    and may optionally include the status and build until the release is live.
+A *release* is a collection of updates representing a new version of the
+product. A release is represented by the full string of MAJOR.MINOR.PATCH,
+and may optionally include the status and build until the release is live.
 
-    The release is probably never displayed to Customers or Users.
+The release is probably never displayed to Customers or Users.
 
-    **Version**
+**Version**
 
-    A *version* represents a specific state of the product. The version is
-    represented by the MAJOR.MINOR string of the release.
+A *version* represents a specific state of the product. The version is
+represented by the MAJOR.MINOR string of the release.
 
-    The version may be shown to Customers or Users.
+The version may be shown to Customers or Users.
 
     """
-    __version__ = "0.10.0-d"
+    __version__ = "0.10.2-d"
 
     # Define options and arguments.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
@@ -780,6 +785,10 @@ def version_update():
         print(version)
         sys.exit(EXIT_OK)
 
+    # Set the version name.
+    if args.name:
+        version.name = args.name
+
     # Write the VERSION.txt file.
     if args.preview_only:
         print("Write: %s" % project.version_txt)
@@ -790,8 +799,12 @@ def version_update():
 
     # Write the version.py file.
     if project.version_py:
-        template = args.template or Version.get_template()
-        content = Version.get_template() % version.get_context()
+        if args.template:
+            template = Template(read_file(args.template))
+        else:
+            template = Template(Version.get_template())
+
+        content = template.substitute(**version.get_context())
 
         if args.preview_only:
             print("Write: %s" % project.version_py)

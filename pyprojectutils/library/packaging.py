@@ -265,7 +265,10 @@ class Pip(BasePackage):
             return self.cmd
 
         cmd = "pip install"
-        if self.version:
+
+        if self.egg:
+            cmd += " %s" % self.to_plain()
+        elif self.version:
             cmd += " %s%s" % (self.name, self.version)
         else:
             cmd += " %s" % self.name
@@ -308,8 +311,8 @@ class Pip(BasePackage):
 class PackageConfig(Config):
     """A ``packages.ini`` file."""
 
-    def __init__(self, path, debug=False):
-        super(PackageConfig, self).__init__(path, debug=debug)
+    def __init__(self, path):
+        super(PackageConfig, self).__init__(path)
 
     def get_packages(self, env=None, manager=None):
         """Get packages from this configuration.
@@ -317,12 +320,13 @@ class PackageConfig(Config):
         :param env: Optional environment name by which to filter packages.
         :type env: str
 
-        :param env: Optional package manager name by which to filter packages.
-        :type env: str
+        :param manager: Optional package manager name by which to filter packages.
+        :type manager: str
 
-        :rtype:
+        :rtype: list
 
         """
+        a = list()
         for section_name in self._sections:
             section = self.get_section(section_name)
             if env and env not in section.env:
@@ -331,7 +335,9 @@ class PackageConfig(Config):
             if manager and manager != section.manager:
                 continue
 
-            yield section
+            a.append(section)
+
+        return a
 
     def _load_section(self, name, values):
         manager = values.get("manager", "pip")

@@ -21,7 +21,7 @@ __all__ = (
 # Functions
 
 
-def autoload_project(name, include_disk=False, path="./"):
+def autoload_project(name, include_disk=False, path=None):
     """Attempt to automatically load the project configuration based on the name and path.
 
     :param name: The project name, or possible name.
@@ -30,7 +30,7 @@ def autoload_project(name, include_disk=False, path="./"):
     :param include_disk: Whether to calculate disk space.
     :type include_disk: bool
 
-    :param path: The base path to search.
+    :param path: The path where projects are located.
     :type path: str
 
     :rtype: Project
@@ -48,7 +48,7 @@ def autoload_project(name, include_disk=False, path="./"):
     for name in names:
         root_path = os.path.join(path, name)
         if os.path.exists(root_path):
-            project = Project(name, root_path)
+            project = Project(name, path=path)
             project.load(include_disk=include_disk)
             return project
 
@@ -94,7 +94,7 @@ def get_projects(path, criteria=None, include_disk=False, show_all=False):
             continue
 
         # Load the project.
-        project = Project(project_name, project_root)
+        project = Project(project_name, path)
         project.load(include_disk=include_disk)
         # print(project)
 
@@ -152,14 +152,11 @@ def get_project_types(path):
 
 class Project(Config):
 
-    def __init__(self, name, debug=False, path=None):
+    def __init__(self, name, path=None):
         """Initialize a project object.
 
         :param name: The name of the project.
         :type name: str
-
-        :param debug: Enable debug mode. Only useful in development.
-        :type debug: bool
 
         :param path: The path to the project.
         :type path: str
@@ -205,7 +202,7 @@ class Project(Config):
         else:
             self.config_exists = False
 
-        super(Project, self).__init__(config_path, debug=debug)
+        super(Project, self).__init__(config_path)
 
     def __str__(self):
         return self.title or self.name or "Untitled Project"
@@ -239,33 +236,6 @@ class Project(Config):
 
         return d
 
-    def get_dependencies(self):
-        """Get project dependencies from a ``packages.ini`` file.
-
-        :rtype list
-        :returns: A list of ``(env, packages)``.
-
-        """
-        # TODO: Add public documentation for project dependencies.
-        locations = (
-            os.path.join("deploy", "requirements", "packages.ini"),
-            os.path.join("requirements/packages.ini"),
-            os.path.join("requirements.ini"),
-        )
-
-        a = list()
-        for i in locations:
-            if self.path_exists(i):
-                path = os.path.join(self.root, i)
-
-                config = PackageConfig(path, debug=self.debug)
-                config.load()
-
-                for env in ENVIRONMENTS:
-                    a.append((env, config.get_packages(env=env)))
-
-        return a
-
     def get_requirements(self, env=None, manager=None):
         """Get project requirements (dependencies).
 
@@ -275,7 +245,7 @@ class Project(Config):
         :param manager: Filter by package manager.
         :type manager: str
 
-        :rtype: iterable
+        :rtype: list
 
         """
         locations = (
@@ -288,7 +258,7 @@ class Project(Config):
             if self.path_exists(i):
                 path = os.path.join(self.root, i)
 
-                config = PackageConfig(path, debug=self.debug)
+                config = PackageConfig(path)
                 if config.load():
                     return config.get_packages(env=env, manager=manager)
 

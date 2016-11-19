@@ -29,11 +29,9 @@ Copy the commands to your executable path. For example:
 
 List and filter projects in the projects directory.
 
-	usage: lsprojects.py [-h] [-a] [-c= CLIENT_CODE] [--dirty] [-d]
-						 [-n= PROJECT_NAME] [-p= PROJECT_HOME] [-s= STATUS]
-						 [-t= PROJECT_TYPE] [-v] [--version]
-
-	List and filter projects in the projects directory.
+	usage: lsprojects [-h] [-a] [-c= CLIENT_CODE] [--dirty] [-d]
+					  [-n= PROJECT_NAME] [-p= PROJECT_HOME] [-s= STATUS]
+					  [-t= PROJECT_TYPE] [-v] [--version]
 
 	optional arguments:
 	  -h, --help            show this help message and exit
@@ -85,10 +83,12 @@ The ``tags``, ``type``, ``scope``, and ``status`` may be whatever you like.
 
 #### Sections
 
-Attributes of ``[project]`` section are used as is. ``[business]`` ``[client]``
-are used to identify the beneficiary and/or developer of the project.
+Attributes of ``[project]`` section are used as is. ``[business]`` and
+``[client]`` are used to identify the beneficiary and/or developer of the
+project.
 
-Other sections may be added as you see fit.
+Other sections may be added as you see fit. For example, the ``[domain]``
+section above.
 
 #### Additional Data
 
@@ -111,14 +111,82 @@ project information in [Markdown][markdown] format:
 Although you'll likely want to customize the output, this is handy for
 creating (or recreating) a README for the project.
 
+### lspackages
+
+List and filter project packages.
+
+	usage: lspackages [-h]
+					  [--env= {base,control,development,testing,staging,live}]
+					  [--format= {ansible,command,markdown,plain,rst,table}]
+					  [--manager= {apt,brew,gem,npm,pip}] [-O= OUTPUT_FILE]
+					  [-p= PROJECT_HOME] [-v] [--version]
+					  project_name
+
+	positional arguments:
+	  project_name          The name of the project.
+
+	optional arguments:
+	  -h, --help            show this help message and exit
+	  --env= {base,control,development,testing,staging,live}
+							Filter by environment.
+	  --format= {ansible,command,markdown,plain,rst,table}
+							Output format.
+	  --manager= {apt,brew,gem,npm,pip}
+							Filter by package manager.
+	  -O= OUTPUT_FILE, --output= OUTPUT_FILE
+							Path to the output file, if any.
+	  -p= PROJECT_HOME, --path= PROJECT_HOME
+							Path to where projects are stored. Defaults to
+							/Users/shawn/Work
+	  -v                    Show version number and exit.
+	  --version             Show verbose version information and exit.
+
+#### Location of the INI
+
+The command will look for the ``packages.ini`` file in these locations within project root:
+
+1. ``deploy/requirements/packages.ini``
+2. ``requirements/packages.ini``
+3. ``requirements.ini``
+
+#### Format of INI
+
+The ``packages.ini`` contains a section for each package.
+
+    [package_name]
+    ...
+
+The following options are recognized:
+
+- branch: The branch to use when downloading the package. Not supported by all package managers.
+- cmd: The install command. This is generated automatically unless this option is given.
+- docs: The URL for package documentation.
+- egg: The egg name to use for a Python packackage install.
+- env: The environment where this package is used.
+- home: The URL for the package home page.
+- manager: The package manager to use. Choices are apt, brew, gem, npm, and pip.
+- note: Any note regarding the package. For example, how or why you are using it.
+- scm: The URL for the package's source code management tool.
+- title: A title for the package.
+- version: The version spec to use for installs. For example: ``>=1.10``
+
+#### Output Formats
+
+Several output formats are supported. All are sent to standard out unless a file is specified using ``--output``.
+
+- ansible: For Ansible deployment.
+- command: The install command.
+- markdown: For Markdown.
+- plain: For requirements files.
+- rst: For ReStructuredText.
+- table (default): Lists the packages in tabular format.
+
 ### randompw
 
 Generate a random password.
 
-	usage: randompw.py [-h] [--format= [{crypt,md5,plain,htpasswd}]] [--strong]
-					   [-U]
-
-	Generate a random password.
+	usage: randompw [-h] [--format= [{crypt,md5,plain,htpasswd}]] [--strong] [-U]
+					[-v] [--version]
 
 	optional arguments:
 	  -h, --help            show this help message and exit
@@ -126,20 +194,19 @@ Generate a random password.
 							Choose the format of the output.
 	  --strong              Make the password stronger.
 	  -U                    Avoid ambiguous characters.
+	  -v                    Show version number and exit.
+	  --version             Show verbose version information and exit.
 
 We often need to generate passwords automatically. This utility does just
-that. Upload it during deployment to create passwords on the fly.
+that. Install pyprojectutils it during deployment to create passwords on the fly.
 
 ### versionbump
 
 Increment the version number immediately after checking out a release branch.
 
-	usage: versionbump.py [-h] [-b= BUILD] [--force] [-M] [-m] [-n= NAME] [-p]
-						  [-P= PATH] [--preview] [-s= STATUS] [-T= TEMPLATE] [-v]
-						  [--version]
-						  project_name [string]
-
-	Increment the version number immediately after checking out a release branch.
+	usage: versionbump [-h] [-b= BUILD] [-M] [-m] [-n= NAME] [-p] [-P= PATH]
+					   [--preview] [-s= STATUS] [-T= TEMPLATE] [-v] [--version]
+					   project_name [string]
 
 	positional arguments:
 	  project_name          The name of the project. Typically, the directory name
@@ -150,10 +217,6 @@ Increment the version number immediately after checking out a release branch.
 	  -h, --help            show this help message and exit
 	  -b= BUILD, --build= BUILD
 							Supply build meta data.
-	  --force               By default, setting the major version resets minor and
-							patch to 0, and setting minor resets patch to 0. Use
-							this switch to force the exact version that you
-							specify.
 	  -M, --major           Increase the major version number when you make
 							changes to the public API that are backward-
 							incompatible.
@@ -176,7 +239,7 @@ Increment the version number immediately after checking out a release branch.
 	  -v                    Show version number and exit.
 	  --version             Show verbose version information and exit.
 
-#### When to Use
+    #### When to Use
 
 Generally, you want to increment the version number immediately after checking
 out a release branch. However, you may wish to bump the version any time
@@ -224,12 +287,12 @@ extensions to the MAJOR.MINOR.PATCH format.
 
 We define the following status codes:
 
-- x - Prototype, experimental. Use at your own risk.
-- d - Development. Unstable, untested.
-- a - Feature complete.
-- b - Ready for testing and QA.
-- r - Release candidate.
-- o - Obsolete, deprecated, or defect. End of life.
+- x Prototype, experimental. Use at your own risk.
+- d Development. Unstable, untested.
+- a Feature complete.
+- b Ready for testing and QA.
+- r Release candidate.
+- o Obsolete, deprecated, or defect. End of life.
 
 You may of course use whatever status you like.
 

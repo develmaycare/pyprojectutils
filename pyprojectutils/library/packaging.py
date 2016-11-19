@@ -43,7 +43,7 @@ class BasePackage(Section):
         self.cmd = kwargs.get("cmd", None)
         self.docs = kwargs.get("docs", None)
         self.egg = kwargs.get("egg", None)
-        self.env = kwargs.get("env", BASE_ENVIRONMENT)
+        self.env = kwargs.get("env", BASE_ENVIRONMENT).split(" ")
         self.home = kwargs.get("home", None)
         self.manager = kwargs.get("manager", "pip")
         self.name = name
@@ -77,6 +77,8 @@ class BasePackage(Section):
     def to_markdown(self):
         a = list()
 
+        # Hierarchy is File > Requirements > Environment > Package. This makes the package title a level 4 header which
+        # doesn't display well, so we just use bold instead.
         a.append("**%s**" % self.title)
         a.append("")
 
@@ -84,7 +86,10 @@ class BasePackage(Section):
             a.append(self.note)
             a.append("")
 
-        a.append("Part of the *%s* environment." % self.env)
+        if len(self.env) > 1:
+            a.append("Part of these environments: *%s*" % ", ".join(self.env))
+        else:
+            a.append("Part of the *%s* environment." % "".join(self.env))
         a.append("")
 
         # Example: [Link text](http://example.com/>)
@@ -99,7 +104,7 @@ class BasePackage(Section):
                 a.append("- [Documentation](%s)" % self.docs)
 
             if self.scm:
-                a.append("- [Source](%s)" % self.scm)
+                a.append("- [Source Code](%s)" % self.scm)
 
             a.append("")
 
@@ -109,6 +114,14 @@ class BasePackage(Section):
         a.append("")
 
         return "\n".join(a)
+
+    def to_plain(self):
+        """Get the package output as a requirements file.
+
+        :rtype: str
+
+        """
+        raise NotImplementedError()
 
     def to_rst(self):
         a = list()
@@ -121,7 +134,10 @@ class BasePackage(Section):
             a.append(self.note)
             a.append("")
 
-        a.append("Part of the *%s* environment." % self.env)
+        if len(self.env) > 1:
+            a.append("Part of these environments: *%s*" % ", ".join(self.env))
+        else:
+            a.append("Part of the *%s* environment." % "".join(self.env))
         a.append("")
 
         # Example: `Link text <http://example.com/>`_
@@ -133,7 +149,7 @@ class BasePackage(Section):
                 a.append("- `Documentation <%s/>`_" % self.docs)
 
             if self.scm:
-                a.append("- `Source <%s/>`_" % self.scm)
+                a.append("- `Source Code <%s/>`_" % self.scm)
 
             a.append("")
 
@@ -145,14 +161,6 @@ class BasePackage(Section):
         a.append("")
 
         return "\n".join(a)
-
-    def to_txt(self):
-        """Get the package output as a requirements file.
-
-        :rtype: str
-
-        """
-        raise NotImplementedError()
 
 
 class Apt(BasePackage):
@@ -174,7 +182,7 @@ class Apt(BasePackage):
 
         return cmd
 
-    def to_txt(self):
+    def to_plain(self):
         return self.name
 
 
@@ -195,7 +203,7 @@ class Brew(BasePackage):
 
         return cmd
 
-    def to_txt(self):
+    def to_plain(self):
         return self.name
 
 
@@ -218,7 +226,7 @@ class Gem(BasePackage):
 
         return cmd
 
-    def to_txt(self):
+    def to_plain(self):
         return self.name
 
 
@@ -241,7 +249,7 @@ class Npm(BasePackage):
 
         return cmd
 
-    def to_txt(self):
+    def to_plain(self):
         return self.name
 
 
@@ -264,7 +272,7 @@ class Pip(BasePackage):
 
         return cmd
 
-    def to_txt(self):
+    def to_plain(self):
         """Get the package output as a requirements file.
 
         :rtype: str
@@ -303,10 +311,13 @@ class PackageConfig(Config):
     def __init__(self, path, debug=False):
         super(PackageConfig, self).__init__(path, debug=debug)
 
-    def get_packages(self, env=None):
+    def get_packages(self, env=None, manager=None):
         """Get packages from this configuration.
 
         :param env: Optional environment name by which to filter packages.
+        :type env: str
+
+        :param env: Optional package manager name by which to filter packages.
         :type env: str
 
         :rtype:
@@ -314,7 +325,10 @@ class PackageConfig(Config):
         """
         for section_name in self._sections:
             section = self.get_section(section_name)
-            if env and section.env != env:
+            if env and env not in section.env:
+                continue
+
+            if manager and manager != section.manager:
                 continue
 
             yield section

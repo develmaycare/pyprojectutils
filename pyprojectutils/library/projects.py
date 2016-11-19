@@ -243,7 +243,18 @@ class Project(Config):
 
         return a
 
-    def get_requirements(self, env=None):
+    def get_requirements(self, env=None, manager=None):
+        """Get project requirements (dependencies).
+
+        :param env: Filter by environment.
+        :type env: str
+
+        :param manager: Filter by package manager.
+        :type manager: str
+
+        :rtype: iterable
+
+        """
         locations = (
             os.path.join("deploy", "requirements", "packages.ini"),
             os.path.join("requirements/packages.ini"),
@@ -256,8 +267,7 @@ class Project(Config):
 
                 config = PackageConfig(path, debug=self.debug)
                 if config.load():
-                    return config.get_packages(env=env)
-
+                    return config.get_packages(env=env, manager=manager)
 
         return None
 

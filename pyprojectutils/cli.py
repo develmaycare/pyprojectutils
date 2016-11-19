@@ -4,10 +4,12 @@ from ConfigParser import RawConfigParser
 import os
 from datetime import datetime
 import sys
-from constants import ENVIRONMENTS, EXIT_OK, EXIT_OTHER, EXIT_USAGE, PROJECT_HOME
+from constants import ENVIRONMENTS, EXIT_OK, EXIT_INPUT, EXIT_OTHER, EXIT_USAGE, PROJECT_HOME
 from library.projects import autoload_project, get_project_types, get_project_clients, get_project_statuses, \
-    get_projects
+    get_projects, Project
 from library.passwords import RandomPassword
+from library.releases import Version
+from shortcuts import write_file
 
 
 def generate_password():
@@ -190,9 +192,6 @@ Several output formats are supported. All are sent to standard out unless a file
     if not project:
         print("Project not found: %s" % args.project_name)
         sys.exit(EXIT_OTHER)
-
-    # Get dependencies.
-    deps = project.get_dependencies()
 
     # Generate the output.
     output = list()
@@ -449,6 +448,9 @@ creating (or recreating) a README for the project.
 
     # List the clients as requested.
     if args.client_code == "?":
+        print("Available Client Codes")
+        print("-" * 80)
+
         for c in get_project_clients(args.project_home):
             print(c)
 
@@ -456,6 +458,9 @@ creating (or recreating) a README for the project.
 
     # List the status as requested.
     if args.status == "?":
+        print("Available Status Codes")
+        print("-" * 80)
+
         status_list = get_project_statuses(args.project_home)
         for s in status_list:
             print(s)
@@ -464,6 +469,9 @@ creating (or recreating) a README for the project.
 
     # List the types as requested.
     if args.project_type == "?":
+        print("Available Project Types")
+        print("-" * 80)
+
         for t in project_types:
             print(t)
 
@@ -474,18 +482,20 @@ creating (or recreating) a README for the project.
     if args.project_type:
         heading += "(%s)" % args.project_type
 
-    print "=" * 105
-    print heading
-    print "=" * 105
+    print("=" * 105)
+    print(heading)
+    print("=" * 105)
 
     # Print the column headings.
     if args.project_type:
-        print "%-40s %-10s %-11s %-10s %-5s %-4s" % ("Title", "Client", "Version", "Status", "Disk", "SCM")
+        print("%-40s %-10s %-11s %-10s %-5s %-4s" % ("Title", "Client", "Version", "Status", "Disk", "SCM"))
     else:
-        print "%-40s %-10s %-10s %-10s %-11s %-10s %-4s" % (
-        "Title", "Type", "Client", "Version", "Status", "Disk", "SCM")
+        print(
+            "%-40s %-10s %-10s %-10s %-11s %-10s %-4s"
+            % ("Title", "Type", "Client", "Version", "Status", "Disk", "SCM")
+        )
 
-    print "-" * 105
+    print("-" * 105)
 
     # Build the criteria.
     criteria = dict()
@@ -511,8 +521,8 @@ creating (or recreating) a README for the project.
     )
 
     if len(projects) == 0:
-        print ""
-        print "No results."
+        print("")
+        print("No results.")
         sys.exit(EXIT_OK)
 
     for p in projects:
@@ -533,43 +543,265 @@ creating (or recreating) a README for the project.
             scm = p.scm
 
         if args.project_type:
-            print "%-40s %-10s %-10s %-11s %-5s %-4s %-1s" % (title, p.org, p.version, p.status, p.disk, p.scm, config_exists)
+            print(
+                "%-40s %-10s %-10s %-11s %-5s %-4s %-1s"
+                % (title, p.org, p.version, p.status, p.disk, p.scm, config_exists)
+            )
         else:
-            print "%-40s %-10s %-10s %-10s %-11s %-10s %-4s %-1s" % (title, p.type, p.org, p.version, p.status, p.disk, scm, config_exists)
+            print(
+                "%-40s %-10s %-10s %-10s %-11s %-10s %-4s %-1s"
+                % (title, p.type, p.org, p.version, p.status, p.disk, scm, config_exists)
+            )
 
     if len(projects) == 1:
         label = "result"
     else:
         label = "results"
 
-    print "-" * 105
-    print ""
-    print "%s %s." % (len(projects), label)
+    print("-" * 105)
+    print("")
+    print("%s %s." % (len(projects), label))
 
     if args.show_all:
-        print "* indicates absence of project.ini file."
+        print("* indicates absence of project.ini file.")
 
     # Quit.
     sys.exit(EXIT_OK)
 
 
-def write_file(path, content):
-    """Write to a file in a memory-safe way.
+def version_update():
+    """Increment the version number immediately after checking out a release branch."""
 
-    :param path: Path to the file.
-    :type path: str
+    __date__ = "2016-11-19"
+    __help__ = """
+    #### When to Use
 
-    :param content: Content of the file.
-    :type content: str
+    Generally, you want to increment the version number immediately after checking
+    out a release branch. However, you may wish to bump the version any time
+    during development, especially during early development where the MINOR
+    and PATCH versions are changing frequently.
 
-    :rtype: bool
-    :returns: ``True`` if the file could be written.
+    Here is an example workflow:
+
+        # Get the current version and check out the next release.
+        versionbump myproject; # get the current version, example 1.2
+        git checkout -b release-1.3;
+
+        # Bump automatically sets the next minor version with a status of d.
+        versionbump myproject -m -s d;
+
+        # Commit the bump.
+        git commit -am "Version Bump";
+
+        # Go do the final work for the release.
+        # ...
+
+        # Merge the release.
+        git checkout master;
+        git merge --no-ff release-1.3;
+        git tag -a 1.3;
+
+        # Merge back to development.
+        git checkout development;
+        git merge --no-ff release-1.3;
+
+    #### Semantic Versioning
+
+    This utility makes use of [Semantic Versioning](semver.org). From the
+    documentation:
+
+    1. MAJOR version when you make incompatible API changes,
+    2. MINOR version when you add functionality in a backwards-compatible manner,
+       and
+    3. PATCH version when you make backwards-compatible bug fixes.
+
+    Additional labels for pre-release and build metadata are available as
+    extensions to the MAJOR.MINOR.PATCH format.
+
+    **Status**
+
+    We define the following status codes:
+
+    - x Prototype, experimental. Use at your own risk.
+    - d Development. Unstable, untested.
+    - a Feature complete.
+    - b Ready for testing and QA.
+    - r Release candidate.
+    - o Obsolete, deprecated, or defect. End of life.
+
+    You may of course use whatever status you like.
+
+    #### Release Versus Version
+
+    **Release**
+
+    A *release* is a collection of updates representing a new version of the
+    product. A release is represented by the full string of MAJOR.MINOR.PATCH,
+    and may optionally include the status and build until the release is live.
+
+    The release is probably never displayed to Customers or Users.
+
+    **Version**
+
+    A *version* represents a specific state of the product. The version is
+    represented by the MAJOR.MINOR string of the release.
+
+    The version may be shown to Customers or Users.
 
     """
-    try:
-        with open(path, "wb") as f:
-            f.write(content)
-            f.close()
-        return True
-    except IOError:
-        return False
+    __version__ = "0.10.0-d"
+
+    # Define options and arguments.
+    parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
+
+    parser.add_argument(
+        "project_name",
+        help="The name of the project. Typically, the directory name in which the project is stored."
+    )
+
+    parser.add_argument(
+        "string",
+        help="The specific release string to assign.",
+        nargs="?"
+    )
+
+    parser.add_argument(
+        "-b=",
+        "--build=",
+        dest="build",
+        help="Supply build meta data."
+    )
+
+    parser.add_argument(
+        "-M",
+        "--major",
+        action="store_true",
+        dest="major",
+        help="Increase the major version number when you make changes to the public API that are "
+             "backward-incompatible."
+    )
+
+    parser.add_argument(
+        "-m",
+        "--minor",
+        action="store_true",
+        dest="minor",
+        help="Increase the minor version number when new or updated functionality has been implemented "
+             "that does not change the public API."
+    )
+
+    parser.add_argument(
+        "-n=",
+        "--name=",
+        dest="name",
+        help="Name your release."
+    )
+
+    parser.add_argument(
+        "-p",
+        "--patch",
+        action="store_true",
+        dest="patch",
+        help="Set (or increase) the patch level when backward-compatible bug-fixes have been implemented."
+    )
+
+    parser.add_argument(
+        "-P=",
+        "--path=",
+        default=PROJECT_HOME,
+        dest="path",
+        help="The path to where projects are stored. Defaults to %s" % PROJECT_HOME
+    )
+
+    parser.add_argument(
+        "--preview",
+        action="store_true",
+        dest="preview_only",
+        help="Preview the output, but don't make any changes."
+    )
+
+    parser.add_argument(
+        "-s=",
+        "--status=",
+        dest="status",
+        help="Use the status to denote a pre-release version."
+    )
+
+    parser.add_argument(
+        "-T=",
+        "--template=",
+        dest="template",
+        help="Path to the version.py template you would like to use. Use ? to see the default."
+    )
+
+    # Access to the version number requires special consideration, especially
+    # when using sub parsers. The Python 3.3 behavior is different. See this
+    # answer: http://stackoverflow.com/questions/8521612/argparse-optional-subparser-for-version
+    # parser.add_argument('--version', action='version', version='%(prog)s 2.0')
+    parser.add_argument(
+        "-v",
+        action="version",
+        help="Show version number and exit.",
+        version=__version__
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        help="Show verbose version information and exit.",
+        version="%(prog)s" + " %s %s" % (__version__, __date__)
+    )
+
+    # This will display help or input errors as needed.
+    args = parser.parse_args()
+    # print args
+
+    # Display the default version.py template.
+    if args.template == "?":
+        print(Version.get_template())
+        sys.exit(EXIT_OK)
+
+    # Get the project. Make sure it exists.
+    project = Project(args.project_name, args.path)
+    if not project.exists:
+        print("Project does not exist: %s" % project.name)
+        sys.exit(EXIT_INPUT)
+
+    # Initialize version instance.
+    version = Version(project.version)
+
+    # Update the version or (by default) display the current version.
+    if args.major:
+        version.bump(major=True, status=args.status, build=args.build)
+    elif args.minor:
+        version.bump(minor=True, status=args.status, build=args.build)
+    elif args.patch:
+        version.bump(patch=True, status=args.status, build=args.build)
+    else:
+        print(version)
+        sys.exit(EXIT_OK)
+
+    # Write the VERSION.txt file.
+    if args.preview_only:
+        print("Write: %s" % project.version_txt)
+        print(version.to_string())
+        print("")
+    else:
+        write_file(project.version_txt, version.to_string())
+
+    # Write the version.py file.
+    if project.version_py:
+        template = args.template or Version.get_template()
+        content = Version.get_template() % version.get_context()
+
+        if args.preview_only:
+            print("Write: %s" % project.version_py)
+            print("-" * 80)
+            print(content)
+            print("-" * 80)
+            print("")
+        else:
+            write_file(project.version_py, content)
+
+    # Quit.
+    print(version.to_string())
+    sys.exit(EXIT_OK)

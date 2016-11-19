@@ -66,6 +66,7 @@ setup(
           'lspackages = pyprojectutils.cli:package_parser',
           'lsprojects = pyprojectutils.cli:project_parser',
           'randompw = pyprojectutils.cli:generate_password',
+          'versionbump = pyprojectutils.cli:version_update',
       ],
     },
 )

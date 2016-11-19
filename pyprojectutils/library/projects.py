@@ -4,7 +4,8 @@ import commands
 import os
 from config import Config, Section
 from packaging import PackageConfig
-from ..constants import ENVIRONMENTS
+from ..constants import ENVIRONMENTS, PROJECT_HOME
+from ..shortcuts import read_file
 
 # Exports
 
@@ -151,17 +152,17 @@ def get_project_types(path):
 
 class Project(Config):
 
-    def __init__(self, name, root, debug=False):
+    def __init__(self, name, debug=False, path=None):
         """Initialize a project object.
 
         :param name: The name of the project.
         :type name: str
 
-        :param root: The path to the project.
-        :type root: str
-
         :param debug: Enable debug mode. Only useful in development.
         :type debug: bool
+
+        :param path: The path to the project.
+        :type path: str
 
         """
         self.config_exists = None
@@ -171,16 +172,34 @@ class Project(Config):
         self.is_loaded = False
         self.name = name
         self.org = "Unknown"
-        self.root = root
+        self.root = os.path.join(path or PROJECT_HOME, name)
         self.scm = None
         self.status = "unknown"
         self.tags = list()
         self.title = None
         self.type = "project"
-        self.version = "0.1.0-d"
         self._requirements = list()
 
-        config_path = os.path.join(root, "project.ini")
+        # Handle version.
+        if self.path_exists("VERSION.txt"):
+            self.version_txt = os.path.join(self.root, "VERSION.txt")
+            self.version = read_file(self.version_txt)
+        else:
+            self.version = "0.1.0-d"
+
+        self.version_py = None
+        locations = (
+            os.path.join(self.root, "version.py"),
+            os.path.join(self.root, name, "version.py"),
+            os.path.join(self.root, "source", "main", "version.py"),
+        )
+        for i in locations:
+            if os.path.exists(i):
+                self.version_py = i
+                break
+
+        # Handle config file.
+        config_path = os.path.join(self.root, "project.ini")
         if os.path.exists(config_path):
             self.config_exists = True
         else:
@@ -190,6 +209,10 @@ class Project(Config):
 
     def __str__(self):
         return self.title or self.name or "Untitled Project"
+
+    @property
+    def exists(self):
+        return os.path.exists(self.root)
 
     def get_context(self):
         """Get project data as a dictionary.
@@ -232,7 +255,7 @@ class Project(Config):
 
         a = list()
         for i in locations:
-            if self._file_exists(i):
+            if self.path_exists(i):
                 path = os.path.join(self.root, i)
 
                 config = PackageConfig(path, debug=self.debug)
@@ -262,7 +285,7 @@ class Project(Config):
         )
 
         for i in locations:
-            if self._file_exists(i):
+            if self.path_exists(i):
                 path = os.path.join(self.root, i)
 
                 config = PackageConfig(path, debug=self.debug)
@@ -283,7 +306,7 @@ class Project(Config):
 
         """
         # We can't do anything if the project root doesn't exist.
-        if not os.path.exists(self.root):
+        if not self.exists:
             self.is_loaded = False
             return False
 
@@ -304,6 +327,11 @@ class Project(Config):
             self.disk = self._get_disk()
 
         return self.is_loaded
+
+    def path_exists(self, *args):
+        """Determine if a given file or directory exists relative to the project's root."""
+        path = os.path.join(self.root, *args)
+        return os.path.exists(path)
 
     def to_markdown(self):
         """Output the project as Markdown.
@@ -343,21 +371,18 @@ class Project(Config):
                 pass
 
         # List the dependencies.
-        deps = self.get_dependencies()
-        if deps:
-            a.append("## Dependencies")
+        a.append("## Requirements")
+        a.append("")
+        for env in ENVIRONMENTS:
+            a.append("### %s" % env)
             a.append("")
 
-            for env, packages in deps:
+            packages = self.get_requirements(env=env)
+            if len(packages) == 0:
+                continue
 
-                if len(packages) == 0:
-                    continue
-
-                a.append("### %s" % env)
-                a.append("")
-
-                for p in packages:
-                    a.append(p.to_markdown())
+            for p in packages:
+                a.append(p.to_markdown())
 
         # Include the project tree.
         a.append("## Tree")
@@ -369,13 +394,6 @@ class Project(Config):
         a.append("")
 
         return "\n".join(a)
-
-    def _file_exists(self, name):
-        if not self.root:
-            raise ValueError("project root must be defined")
-
-        path = os.path.join(self.root, name)
-        return os.path.exists(path)
 
     def _get_disk(self):
         cmd = "du -hs %s | awk -F ' ' '{print $1}'" % self.root
@@ -404,7 +422,7 @@ class Project(Config):
 
     def _get_scm(self):
         """Determine the SCM in use and get the current state."""
-        if self._file_exists(".git"):
+        if self.path_exists(".git"):
             # See http://stackoverflow.com/a/5737794/241720
             cmd = '(cd %s && test -z "$(git status --porcelain)")' % self.root
             (status, output) = commands.getstatusoutput(cmd)
@@ -414,17 +432,17 @@ class Project(Config):
                 self.is_dirty = False
 
             return "git"
-        elif self._file_exists(".hg"):
+        elif self.path_exists(".hg"):
             # TODO: Determine if hg repo is dirty.
             return "hg"
-        elif self._file_exists("trunk"):
+        elif self.path_exists("trunk"):
             # TODO: Determine if svn repo is dirty.
             return "svn"
         else:
             return "None"
 
     def _get_version(self):
-        if self._file_exists("VERSION.txt"):
+        if self.path_exists("VERSION.txt"):
             with open(self._get_path("VERSION.txt"), "rb") as f:
                 v = f.read().strip()
                 f.close()

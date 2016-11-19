@@ -4,25 +4,26 @@ A collection of documentation and command line utilities for managing a software
 
 ## Install
 
-Download the source:
+To install:
 
-	git clone git@github.com:bogeymin/project-utils.git;
-	
+	pip install -e git+https://github.com/bogeymin/pyprojectutils.git#egg=pyprojectutils
+
+## Development
+
 Set your ``$PROJECT_HOME``. If you use [Virtual Env Wrapper][virtualenvwrapp] (and you
 should), then this is already done.
 
 [virtualenvwrapp]: http://virtualenvwrapper.readthedocs.io/en/latest/
+
+Download the source:
+
+	cd $PROJECT_HOME;
+	git clone git@github.com:bogeymin/pyprojectutils.git;
 	
 Install the requirements:
 
-	pip install -r project-utils/requirements.pip;
+	pip install -r pyprojectutils/requirements.pip;
 	
-Copy the commands to your executable path. For example:
-
-	cp project-utils/bin/lsprojects.py /usr/local/bin/lsprojects;
-	cp project-utils/bin/randompw.py /usr/local/bin/randompw;
-	cp project-utils/bin/versionbump.py /usr/local/bin/versionbump;
-
 ## The Commands
 
 ### lsprojects

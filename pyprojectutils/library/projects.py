@@ -52,7 +52,7 @@ def autoload_project(name, include_disk=False, path=None):
             project.load(include_disk=include_disk)
             return project
 
-    return None
+    return Project(name, path=path)
 
 
 def get_projects(path, criteria=None, include_disk=False, show_all=False):

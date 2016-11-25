@@ -1,3 +1,7 @@
+# Imports
+
+from exceptions import OutputError
+
 # Functions
 
 
@@ -59,5 +63,5 @@ def write_file(path, content):
             f.write(content)
             f.close()
         return True
-    except IOError:
-        return False
+    except IOError, e:
+        raise OutputError(e)

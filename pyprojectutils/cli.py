@@ -284,7 +284,11 @@ Several output formats are supported. All are sent to standard out unless a file
             )
 
     if args.output_file:
-        result = write_file(args.output_file, "\n".join(output))
+        try:
+            result = write_file(args.output_file, "\n".join(output))
+        except OutputError, e:
+            print(e)
+            sys.exit(EXIT_OTHER)
         if result:
             print("%s format written to %s." % (args.output_format, args.output_file))
         else:

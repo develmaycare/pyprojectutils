@@ -1,7 +1,8 @@
 # Imports
 
 from config import Config, Section
-from ..constants import BASE_ENVIRONMENT
+from constants import BASE_ENVIRONMENT
+from exceptions import OutputError
 
 # Exports
 
@@ -288,8 +289,14 @@ class Pip(BasePackage):
             -e git+https://github.com/bogeymin/tailfeathers.git@development#egg=tailfeathers
 
         """
+
+        # Without an egg, we just return the package name.
         if not self.egg:
             return self.name
+
+        # We can't go on without having the URL of the SCM.
+        if not self.scm:
+            raise OutputError("scm is required to use an egg.")
 
         s = "-e"
 

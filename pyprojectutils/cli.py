@@ -2,12 +2,13 @@ from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from datetime import datetime
 from string import Template
 import sys
-from constants import ENVIRONMENTS, EXIT_OK, EXIT_INPUT, EXIT_OTHER, EXIT_USAGE, PROJECT_HOME
+from library.constants import ENVIRONMENTS, EXIT_OK, EXIT_INPUT, EXIT_OTHER, EXIT_USAGE, PROJECT_HOME
+from library.exceptions import OutputError
 from library.projects import autoload_project, get_project_types, get_project_clients, get_project_statuses, \
     get_projects, Project
 from library.passwords import RandomPassword
 from library.releases import Version
-from shortcuts import read_file, write_file
+from library.shortcuts import read_file, write_file
 
 
 def generate_password():
@@ -243,7 +244,11 @@ Several output formats are supported. All are sent to standard out unless a file
             output.append("-r base.pip")
 
         for p in project.get_requirements(env=args.env, manager=args.manager):
-            output.append(p.to_plain())
+            try:
+                output.append(p.to_plain())
+            except OutputError, e:
+                print(e)
+                sys.exit(EXIT_OTHER)
     elif args.output_format == "rst":
         output.append("********")
         output.append("Packages")

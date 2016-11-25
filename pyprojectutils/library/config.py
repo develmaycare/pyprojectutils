@@ -2,7 +2,6 @@
 
 from ConfigParser import RawConfigParser
 from os.path import exists as path_exists
-from ..shortcuts import debug
 
 # Classes
 

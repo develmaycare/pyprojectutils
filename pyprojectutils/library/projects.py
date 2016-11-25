@@ -4,8 +4,8 @@ import commands
 import os
 from config import Config, Section
 from packaging import PackageConfig
-from ..constants import ENVIRONMENTS, PROJECT_HOME
-from ..shortcuts import read_file
+from constants import ENVIRONMENTS, PROJECT_HOME
+from shortcuts import read_file
 
 # Exports
 

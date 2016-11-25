@@ -296,7 +296,7 @@ class Pip(BasePackage):
 
         # We can't go on without having the URL of the SCM.
         if not self.scm:
-            raise OutputError("scm is required to use an egg.")
+            raise OutputError("scm is required to use an egg with the %s package." % self.name)
 
         s = "-e"
 

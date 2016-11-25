@@ -46,7 +46,7 @@ def autoload_project(name, include_disk=False, path=None):
     )
 
     for name in names:
-        root_path = os.path.join(path, name)
+        root_path = os.path.join(path or PROJECT_HOME, name)
         if os.path.exists(root_path):
             project = Project(name, path=path)
             project.load(include_disk=include_disk)

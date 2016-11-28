@@ -1,5 +1,8 @@
 # Imports
 
+import os
+from string import Template
+
 from exceptions import OutputError
 
 # Functions
@@ -24,6 +27,26 @@ def debug(location, message, line=None):
         output = "[%s] %s" % (location, message)
 
     print(output)
+
+
+def parse_template(context, template):
+    """
+
+    :param context: The context to be parsed into the string template.
+    :type context: dict
+
+    :param template: A string or path to use as the template.
+    :type template: str
+
+    :rtype: str
+
+    """
+    if os.path.exists(template):
+        content = Template(read_file(template))
+    else:
+        content = Template(template)
+
+    return content.substitute(**context)
 
 
 def read_file(path):

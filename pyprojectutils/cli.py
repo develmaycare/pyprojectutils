@@ -1,14 +1,13 @@
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from datetime import datetime
-from string import Template
 import sys
 from library.constants import BASE_ENVIRONMENT, ENVIRONMENTS, EXIT_OK, EXIT_INPUT, EXIT_OTHER, EXIT_USAGE, PROJECT_HOME
 from library.exceptions import OutputError
 from library.projects import autoload_project, get_project_types, get_project_clients, get_project_statuses, \
-    get_projects, Project
+    get_projects, initialize_project, Project
 from library.passwords import RandomPassword
 from library.releases import Version
-from library.shortcuts import read_file, write_file
+from library.shortcuts import parse_template, write_file
 
 
 def generate_password():
@@ -303,7 +302,7 @@ Several output formats are supported. All are sent to standard out unless a file
 def project_parser():
     """Find, parse, and collect project information."""
 
-    __date__ = "2016-11-24"
+    __date__ = "2016-11-29"
     __help__ = """
 #### Format of INI
 
@@ -363,7 +362,7 @@ Although you'll likely want to customize the output, this is handy for
 creating (or recreating) a README for the project.
 
 """
-    __version__ = "1.0.1-d"
+    __version__ = "1.1.1-d"
     # Define options and arguments.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
 
@@ -395,6 +394,13 @@ creating (or recreating) a README for the project.
         action="store_true",
         dest="include_disk",
         help="Calculate disk space. Takes longer to run."
+    )
+
+    parser.add_argument(
+        "--init",
+        action="store_true",
+        dest="initialize_project",
+        help="Initialize project meta files. Project name is required."
     )
 
     parser.add_argument(
@@ -444,6 +450,15 @@ creating (or recreating) a README for the project.
     )
 
     args = parser.parse_args()
+
+    # Initialize a project as requested.
+    if args.initialize_project:
+        if not args.project_name:
+            print("Project name is required.")
+            sys.exit(EXIT_USAGE)
+
+        initialize_project(args.project_name, path=args.project_home, status=args.status)
+        sys.exit(EXIT_OK)
 
     # Handle project by name requests.
     if args.project_name:
@@ -595,7 +610,7 @@ creating (or recreating) a README for the project.
 def version_update():
     """Increment the version number immediately after checking out a release branch."""
 
-    __date__ = "2016-11-19"
+    __date__ = "2016-11-28"
     __help__ = """
 #### When to Use
 
@@ -672,7 +687,7 @@ represented by the MAJOR.MINOR string of the release.
 The version may be shown to Customers or Users.
 
     """
-    __version__ = "0.11.0-d"
+    __version__ = "0.11.1-d"
 
     # Define options and arguments.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
@@ -812,11 +827,9 @@ The version may be shown to Customers or Users.
     # Write the version.py file.
     if project.version_py:
         if args.template:
-            template = Template(read_file(args.template))
+            content = parse_template(version.get_context(), args.template)
         else:
-            template = Template(Version.get_template())
-
-        content = template.substitute(**version.get_context())
+            content = parse_template(version.get_context(), Version.get_template())
 
         if args.preview_only:
             print("Write: %s" % project.version_py)

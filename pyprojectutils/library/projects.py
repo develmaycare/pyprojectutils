@@ -5,7 +5,30 @@ import os
 from config import Config, Section
 from packaging import PackageConfig
 from constants import ENVIRONMENTS, PROJECT_HOME
-from shortcuts import read_file
+from shortcuts import parse_template, read_file, write_file
+
+# Constants
+
+PROJECT_INI_TEMPLATE = """[project]
+description = $description
+status = $status
+title = $title
+
+[business]
+code = ACME
+name = ACME, Inc.
+
+[domain]
+name = example
+tld = com
+
+"""
+
+README_TEMPLATE = """# $title
+
+$description
+
+"""
 
 # Exports
 
@@ -15,6 +38,7 @@ __all__ = (
     "get_project_clients",
     "get_project_statuses",
     "get_project_types",
+    "initialize_project",
     "Project",
 )
 
@@ -145,6 +169,89 @@ def get_project_types(path):
             types.append(p.type)
 
     return sorted(types)
+
+
+def initialize_project(name, description=None, license_code=None, path=None, prompt=True, status=None, title=None):
+    """Initialize a project by creating standard meta files.
+
+    :param name: The project name.
+    :type name: str
+
+    :param description: A brief description of the project.
+    :type description: str
+
+    :param license_code: The license code for the project. See ``lice --help``. Defaults to ``bsd3``.
+    :type license_code: str
+
+    :param path: Path to where projects are stored.
+    :type path: str
+
+    :param prompt: Indicates whether the function will prompt for missing data.
+    :type prompt: bool
+
+    :param status: Project status. Defaults to ``development``.
+    :type status: str
+
+    :param title: Title of the project. Defaults to project name.
+    :type title: str
+
+    .. note::
+        This function may be executed multiple times on the same project.
+
+    """
+    if prompt:
+        if not title:
+            title = raw_input("Title: ")
+
+        if not description:
+            description = raw_input("Description: ")
+
+        if not status:
+            status = raw_input("Status [development]: ")
+
+        if not license_code:
+            print("afl3, agpl3, apache, bsd2, bsd3, cc0, cc_by, cc_by_nc, cc_by_nc_nd, cc_by_nc_sa, cc_by_nd, "
+                  "cc_by_sa, cddl, epl, gpl2, gpl3, isc, lgpl, mit, mpl, wtfpl, zlib")
+            license_code = raw_input("License [bsd3]: ")
+
+    project_root = os.path.join(path or PROJECT_HOME, name)
+    if not os.path.exists(project_root):
+        print("Creating project directory: %s" % project_root)
+        os.makedirs(project_root)
+
+    readme = os.path.join(project_root, "README.markdown")
+    if not os.path.exists(readme):
+        print("Writing default README.markdown file: %s" % readme)
+        context = {
+            'description': description or "",
+            'title': title or name,
+        }
+        content = parse_template(context, README_TEMPLATE)
+        write_file(readme, content)
+
+    version = os.path.join(project_root, "VERSION.txt")
+    if not os.path.exists(version):
+        print("Creating initial version file: %s" % version)
+        write_file(version, "0.1.0-d")
+
+    license_path = os.path.join(project_root, "LICENSE.txt")
+    if not os.path.exists(license_path):
+        if not license_code:
+            license_code = "bsd3"
+
+        print("Creating %s license file: %s" % (license_code, license_path))
+        commands.getstatusoutput("lice %s > %s" % (license_code, license_path))
+
+    project_ini = os.path.join(project_root, "project.ini")
+    if not os.path.exists(project_ini):
+        print("Create default project.ini file: %s" % project_ini)
+        context = {
+            'description': description or "",
+            'status': status or "development",
+            'title': title or name,
+        }
+        content = parse_template(context, PROJECT_INI_TEMPLATE)
+        write_file(project_ini, content)
 
 
 # Classes

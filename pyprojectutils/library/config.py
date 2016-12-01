@@ -1,6 +1,6 @@
 # Imports
 
-from ConfigParser import RawConfigParser
+from ConfigParser import ParsingError, RawConfigParser
 from os.path import exists as path_exists
 
 # Classes
@@ -12,7 +12,16 @@ class Config(object):
     def __init__(self, path):
         self.is_loaded = None
         self.path = path
+        self._error = None
         self._sections = list()
+
+    def get_error(self):
+        """Get any error that has occurred during ``load()`` or other processing.
+
+        :rtype: str
+
+        """
+        return self._error
 
     def get_section(self, name):
         """Get the named section.
@@ -25,6 +34,15 @@ class Config(object):
 
         """
         return getattr(self, name)
+
+    @property
+    def has_error(self):
+        """Indicates whether an error has occurred during ``load()`` or other processing.
+
+        :rtype: bool
+
+        """
+        return self._error is not None
 
     def load(self):
         """Attempt to load configuration from the current given path.
@@ -39,7 +57,13 @@ class Config(object):
 
         # Load the config without interpolation.
         ini = RawConfigParser()
-        ini.read(self.path)
+
+        try:
+            ini.read(self.path)
+        except ParsingError, e:
+            self.is_loaded = False
+            self._error = e
+            return False
 
         # Iterate through the sections.
         for section_name in ini.sections():

@@ -517,10 +517,10 @@ creating (or recreating) a README for the project.
 
     # Print the column headings.
     if args.project_type:
-        print("%-40s %-10s %-11s %-10s %-5s %-4s" % ("Title", "Client", "Version", "Status", "Disk", "SCM"))
+        print("%-40s %-10s %-11s %-15s %-5s %-4s" % ("Title", "Client", "Version", "Status", "Disk", "SCM"))
     else:
         print(
-            "%-40s %-10s %-10s %-10s %-11s %-10s %-4s"
+            "%-40s %-10s %-10s %-10s %-15s %-10s %-4s"
             % ("Title", "Type", "Client", "Version", "Status", "Disk", "SCM")
         )
 
@@ -575,12 +575,12 @@ creating (or recreating) a README for the project.
 
         if args.project_type:
             print(
-                "%-40s %-10s %-10s %-11s %-5s %-4s %-1s"
+                "%-40s %-10s %-10s %-15s %-5s %-4s %-1s"
                 % (title, p.org, p.version, p.status, p.disk, p.scm, config_exists)
             )
         else:
             print(
-                "%-40s %-10s %-10s %-10s %-11s %-10s %-4s %-1s"
+                "%-40s %-10s %-10s %-10s %-15s %-10s %-4s %-1s"
                 % (title, p.type, p.org, p.version, p.status, p.disk, scm, config_exists)
             )
 

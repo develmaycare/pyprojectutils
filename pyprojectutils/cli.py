@@ -302,7 +302,7 @@ Several output formats are supported. All are sent to standard out unless a file
 def project_parser():
     """Find, parse, and collect project information."""
 
-    __date__ = "2016-11-29"
+    __date__ = "2016-12-01"
     __help__ = """
 #### Format of INI
 
@@ -362,7 +362,7 @@ Although you'll likely want to customize the output, this is handy for
 creating (or recreating) a README for the project.
 
 """
-    __version__ = "1.1.1-d"
+    __version__ = "1.1.2-d"
     # Define options and arguments.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
 
@@ -466,6 +466,10 @@ creating (or recreating) a README for the project.
 
         if not project.is_loaded:
             print("Could not autoload the project: %s" % args.project_name)
+
+            if project.has_error:
+                print("Error: %s" % project.get_error())
+
             sys.exit(EXIT_OTHER)
 
         print(project.to_markdown())
@@ -555,6 +559,7 @@ creating (or recreating) a README for the project.
         sys.exit(EXIT_OK)
 
     dirty_count = 0
+    error_count = 0
     for p in projects:
 
         if len(p.title) > 40:
@@ -566,6 +571,12 @@ creating (or recreating) a README for the project.
             config_exists = ""
         else:
             config_exists = "*"
+
+        if p.has_error:
+            config_exists += " (e)"
+            error_count += 1
+        else:
+            pass
 
         if p.is_dirty:
             dirty_count += 1
@@ -595,6 +606,9 @@ creating (or recreating) a README for the project.
 
     if args.show_all:
         print("* indicates absence of project.ini file.")
+
+    if error_count >= 1:
+        print("(e) indicates an error parsing the project.ini file. Use the --name switch to find out more.")
 
     if dirty_count == 1:
         print("One project with uncommitted changes.")

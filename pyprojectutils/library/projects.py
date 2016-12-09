@@ -240,6 +240,11 @@ def initialize_project(name, description=None, license_code=None, organization=N
         content = parse_template(context, README_TEMPLATE)
         write_file(readme, content)
 
+    requirements_path = os.path.join(project_root, "requirements.pip")
+    if not os.path.exists(requirements_path):
+        print("Creating empty requirements file.")
+        commands.getstatusoutput("touch %s" % requirements_path)
+
     version = os.path.join(project_root, "VERSION.txt")
     if not os.path.exists(version):
         print("Creating initial version file: %s" % version)
@@ -251,7 +256,7 @@ def initialize_project(name, description=None, license_code=None, organization=N
             license_code = "bsd3"
 
         print("Creating %s license file: %s" % (license_code, license_path))
-        cmd = 'lice --org="%s" --proj=%s %s > %s' % (organization, name, license_code, license_path)
+        cmd = 'lice --org="%s" --proj="%s" %s > %s' % (organization, title, license_code, license_path)
         # print(cmd)
         commands.getstatusoutput(cmd)
 

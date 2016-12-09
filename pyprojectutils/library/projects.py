@@ -9,6 +9,13 @@ from shortcuts import parse_template, read_file, write_file
 
 # Constants
 
+GITIGNORE_TEMPLATE = """*.pyc
+.DS_Store
+.idea
+tmp.*
+tmp
+"""
+
 PROJECT_INI_TEMPLATE = """[project]
 description = $description
 status = $status
@@ -229,6 +236,11 @@ def initialize_project(name, description=None, license_code=None, organization=N
     if not os.path.exists(description_path):
         print("Writing DESCRIPTION.txt file: %s" % description_path)
         write_file(description_path, description)
+
+    gitignore_path = os.path.join(project_root, ".gitignore")
+    if not os.path.exists(gitignore_path):
+        print("Creating .gitignore file: %s" % gitignore_path)
+        write_file(gitignore_path, GITIGNORE_TEMPLATE)
 
     readme = os.path.join(project_root, "README.markdown")
     if not os.path.exists(readme):

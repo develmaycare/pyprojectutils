@@ -362,7 +362,7 @@ Although you'll likely want to customize the output, this is handy for
 creating (or recreating) a README for the project.
 
 """
-    __version__ = "1.1.3-d"
+    __version__ = "1.1.4-d"
     # Define options and arguments.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
 

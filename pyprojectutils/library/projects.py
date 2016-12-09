@@ -252,7 +252,7 @@ def initialize_project(name, description=None, license_code=None, organization=N
 
         print("Creating %s license file: %s" % (license_code, license_path))
         cmd = 'lice --org="%s" --proj=%s %s > %s' % (organization, name, license_code, license_path)
-        print cmd
+        # print(cmd)
         commands.getstatusoutput(cmd)
 
     project_ini = os.path.join(project_root, "project.ini")

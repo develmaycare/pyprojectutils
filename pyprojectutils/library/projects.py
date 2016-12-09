@@ -15,8 +15,8 @@ status = $status
 title = $title
 
 [business]
-code = ACME
-name = ACME, Inc.
+code = TBD
+name = $organization
 
 [domain]
 name = example
@@ -171,7 +171,7 @@ def get_project_types(path):
     return sorted(types)
 
 
-def initialize_project(name, description=None, license_code=None, path=None, prompt=True, status=None, title=None):
+def initialize_project(name, description=None, license_code=None, organization=None, path=None, prompt=True, status=None, title=None):
     """Initialize a project by creating standard meta files.
 
     :param name: The project name.
@@ -182,6 +182,9 @@ def initialize_project(name, description=None, license_code=None, path=None, pro
 
     :param license_code: The license code for the project. See ``lice --help``. Defaults to ``bsd3``.
     :type license_code: str
+
+    :param organization: The organization name.
+    :type organization: str
 
     :param path: Path to where projects are stored.
     :type path: str
@@ -206,6 +209,9 @@ def initialize_project(name, description=None, license_code=None, path=None, pro
         if not description:
             description = raw_input("Description: ")
 
+        if not organization:
+            organization = raw_input("Organization: ")
+
         if not status:
             status = raw_input("Status [development]: ")
 
@@ -218,6 +224,11 @@ def initialize_project(name, description=None, license_code=None, path=None, pro
     if not os.path.exists(project_root):
         print("Creating project directory: %s" % project_root)
         os.makedirs(project_root)
+
+    description_path = os.path.join(project_root, "DESCRIPTION.txt")
+    if not os.path.exists(description_path):
+        print("Writing DESCRIPTION.txt file: %s" % description_path)
+        write_file(description_path, description)
 
     readme = os.path.join(project_root, "README.markdown")
     if not os.path.exists(readme):
@@ -240,13 +251,16 @@ def initialize_project(name, description=None, license_code=None, path=None, pro
             license_code = "bsd3"
 
         print("Creating %s license file: %s" % (license_code, license_path))
-        commands.getstatusoutput("lice %s > %s" % (license_code, license_path))
+        cmd = 'lice --org="%s" --proj=%s %s > %s' % (organization, name, license_code, license_path)
+        print cmd
+        commands.getstatusoutput(cmd)
 
     project_ini = os.path.join(project_root, "project.ini")
     if not os.path.exists(project_ini):
         print("Create default project.ini file: %s" % project_ini)
         context = {
             'description': description or "",
+            'organization': organization or "",
             'status': status or "development",
             'title': title or name,
         }

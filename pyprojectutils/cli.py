@@ -302,7 +302,7 @@ Several output formats are supported. All are sent to standard out unless a file
 def project_parser():
     """Find, parse, and collect project information."""
 
-    __date__ = "2016-12-01"
+    __date__ = "2016-12-08"
     __help__ = """
 #### Format of INI
 
@@ -362,7 +362,7 @@ Although you'll likely want to customize the output, this is handy for
 creating (or recreating) a README for the project.
 
 """
-    __version__ = "1.1.2-d"
+    __version__ = "1.1.3-d"
     # Define options and arguments.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
 

@@ -559,6 +559,7 @@ creating (or recreating) a README for the project.
         sys.exit(EXIT_OK)
 
     dirty_count = 0
+    dirty_list = list()
     error_count = 0
     for p in projects:
 
@@ -580,6 +581,7 @@ creating (or recreating) a README for the project.
 
         if p.is_dirty:
             dirty_count += 1
+            dirty_list.append(p.name)
             scm = "%s+" % p.scm
         else:
             scm = p.scm
@@ -611,9 +613,11 @@ creating (or recreating) a README for the project.
         print("(e) indicates an error parsing the project.ini file. Use the --name switch to find out more.")
 
     if dirty_count == 1:
-        print("One project with uncommitted changes.")
+        print("One project with uncommitted changes: %s" % dirty_list[0])
     elif dirty_count > 1:
         print("%s projects with uncommitted changes." % dirty_count)
+        for i in dirty_list:
+            print("    cd %s && git st" % i)
     else:
         print("No projects with uncommitted changes.")
 

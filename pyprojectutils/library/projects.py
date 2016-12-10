@@ -416,6 +416,7 @@ class Project(Config):
         # We can't do anything if the project root doesn't exist.
         if not self.exists:
             self.is_loaded = False
+            self._error = "Project root does not exist: %s" % self.root
             return False
 
         # Let the underlying Config do it's thing.

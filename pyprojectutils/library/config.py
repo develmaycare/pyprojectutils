@@ -53,6 +53,7 @@ class Config(object):
         """
         if not path_exists(self.path):
             self.is_loaded = False
+            self._error = "Configuration file does not exist: %s" % self.path
             return False
 
         # Load the config without interpolation.

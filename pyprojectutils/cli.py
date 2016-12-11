@@ -1,13 +1,17 @@
+# Imports
+
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from datetime import datetime
 import sys
-from library.constants import BASE_ENVIRONMENT, ENVIRONMENTS, EXIT_OK, EXIT_INPUT, EXIT_OTHER, EXIT_USAGE, PROJECT_HOME
+from library.constants import BASE_ENVIRONMENT, DEVELOPMENT, ENVIRONMENTS, EXIT_OK, EXIT_INPUT, EXIT_OTHER, EXIT_USAGE,\
+    LICENSE_CHOICES, PROJECT_HOME
 from library.exceptions import OutputError
 from library.projects import autoload_project, get_project_types, get_project_clients, get_project_statuses, \
-    get_projects, initialize_project, Project
+    get_projects, Project
+from library.organizations import BaseOrganization, Business, Client
 from library.passwords import RandomPassword
 from library.releases import Version
-from library.shortcuts import parse_template, write_file
+from library.shortcuts import get_input, parse_template, write_file, print_error
 
 
 def generate_password():
@@ -299,70 +303,238 @@ Several output formats are supported. All are sent to standard out unless a file
     sys.exit(EXIT_OK)
 
 
+def project_init():
+    """Initialize a project, creating various common files using intelligent defaults. Or at least *some* defaults."""
+
+    # Define command meta data.
+    __author__ = "Shawn Davis <shawn@develmaycare.com>"
+    __date__ = "2016-12-10"
+    __help__ = """"""
+    __version__ = "0.1.0-d"
+
+    # Initialize the argument parser.
+    parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
+
+    parser.add_argument(
+        "project_name",
+        help="The name of the project. The directory will be created if it does not exist in $PROJECT_HOME",
+    )
+
+    parser.add_argument(
+        "-b=",
+        "--business=",
+        dest="business_name",
+        help="Set the name of the developer organization."
+    )
+
+    parser.add_argument(
+        "-B=",
+        dest="business_code",
+        help="Business code. If omitted it is automatically dervied from the business name."
+    )
+
+    parser.add_argument(
+        "-c=",
+        "--category=",
+        dest="category",
+        help='Project category. For example, django or wagtail. Default is "uncategorized".'
+    )
+
+    parser.add_argument(
+        "--client=",
+        dest="client_name",
+        help="Set the name of the client organization."
+    )
+
+    parser.add_argument(
+        "--client-code=",
+        dest="client_code",
+        help="Client code. If ommited it is automatically dervied from the client name."
+    )
+
+    parser.add_argument(
+        "-d=",
+        "--description=",
+        dest="description",
+        help="A brief description of the project."
+    )
+
+    parser.add_argument(
+        "-L=",
+        "--license=",
+        dest="license_code",
+        help="License code. Use lice --help for list of valid codes."
+    )
+
+    parser.add_argument(
+        "-p=",
+        "--path=",
+        default=PROJECT_HOME,
+        dest="project_home",
+        help="Path to where projects are stored. Defaults to %s" % PROJECT_HOME
+    )
+
+    parser.add_argument(
+        "--prompt=",
+        action="store_true",
+        dest="prompt",
+        help="Prompt for options rather than providing them via the command line."
+    )
+
+    parser.add_argument(
+        "-s=",
+        "--status=",
+        default=DEVELOPMENT,
+        dest="status",
+        help="Filter by project status. Use ? to list available statuses."
+    )
+
+    parser.add_argument(
+        "--title=",
+        dest="title",
+        help="Specify the project title. Defaults to the project name."
+    )
+
+    parser.add_argument(
+        "-t=",
+        "--type=",
+        dest="project_type",
+        help='Specify the project type. Defaults to "project".'
+    )
+
+    # Access to the version number requires special consideration, especially
+    # when using sub parsers. The Python 3.3 behavior is different. See this
+    # answer: http://stackoverflow.com/questions/8521612/argparse-optional-subparser-for-version
+    # parser.add_argument('--version', action='version', version='%(prog)s 2.0')
+    parser.add_argument(
+        "-v",
+        action="version",
+        help="Show version number and exit.",
+        version=__version__
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        help="Show verbose version information and exit.",
+        version="%(prog)s" + " %s %s" % (__version__, __date__)
+    )
+
+    # Parse arguments. Help, version, and usage errors are automatically handled.
+    args = parser.parse_args()
+
+    # Get additional options if prompted.
+    if args.prompt:
+
+        if args.title:
+            title = args.title
+        else:
+            title = get_input("Title", default=args.project_name)
+
+        if args.description:
+            description = args.description
+        else:
+            description = get_input("Description")
+
+        if args.category:
+            category = args.category
+        else:
+            category = get_input("Category")
+
+        if args.project_type:
+            project_type = args.project_type
+        else:
+            project_type = get_input("Type", default="project")
+
+        is_client_project = get_input("Is this project for a client?", choices=["y", "n"])
+        if is_client_project == "y":
+
+            if args.client_name:
+                client_name = args.client_name
+            else:
+                client_name = get_input("Client Name", required=True)
+
+            if args.client_name:
+                client_code = args.client_code
+            else:
+                default_client_code = BaseOrganization.get_default_code(client_name)
+                client_code = get_input("Client Code", default=default_client_code)
+        else:
+            client_code = None
+            client_name = None
+
+        if args.busines_name:
+            business_name = args.busines_name
+        else:
+            business_name = get_input("Business/Developer Name", required=True)
+
+        if args.business_code:
+            business_code = args.business_code
+        else:
+            default_business_code = BaseOrganization.get_default_code(business_name)
+            business_code = get_input("Business/Developer Code", default=default_business_code)
+
+        if args.status:
+            status = args.status
+        else:
+            status = get_input("Status", default=DEVELOPMENT)
+
+        if args.license_code:
+            license_code = args.license_code
+        else:
+            license_code = get_input("License", choices=LICENSE_CHOICES, default="bsd3")
+    else:
+        business_code = args.business_code
+        business_name = args.business_name
+        category = args.category or "uncategorized"
+        client_code = args.client_code
+        client_name = args.client_name
+        description = args.description
+        license_code = args.license_code or "bsd3"
+        project_type = args.project_type or "project"
+        status = args.status or DEVELOPMENT
+        title = args.title or args.project_name
+
+    # Create instances for business and client.
+    if business_name:
+        business = Business(business_name, code=business_code)
+    else:
+        business = None
+
+    if client_name:
+        client = Client(client_name, code=client_code)
+    else:
+        client = None
+
+    # Create a project instance.
+    project = Project(args.project_name, path=args.path)
+
+    # Set project values from input.
+    project.business = business
+    project.category = category
+    project.client = client
+    project.description = description
+    project.license = license_code
+    project.type = project_type
+    project.status = status
+    project.title = title
+
+    # Initialize the project.
+    if project.initialize():
+        sys.exit(EXIT_OK)
+    else:
+        print_error(project.get_error(), exit_code=EXIT_OTHER)
+
+
 def project_parser():
     """Find, parse, and collect project information."""
 
-    __date__ = "2016-12-09"
+    __date__ = "2016-12-10"
     __help__ = """
-#### Format of INI
 
-You can provide a ``project.ini`` file to provide detail on the project that
-cannot be gleaned from the file system.
-
-    [project]
-    description = A description of the project.
-    scope = website
-    status = development
-    tags = CRM, Sales
-    type = django
-    title = Project Title
-
-    [business]
-    code = PTL
-    name = Pleasant Tents, LLC
-
-    [client]
-    code = ACME
-    name = ACME, Inc
-
-    [domain]
-    name = example
-    tld = com
-
-The ``tags``, ``type``, ``scope``, and ``status`` may be whatever you like.
-
-#### Sections
-
-Attributes of ``[project]`` section are used as is. ``[business]`` and
-``[client]`` are used to identify the beneficiary and/or developer of the
-project.
-
-Other sections may be added as you see fit. For example, the ``[domain]``
-section above.
-
-#### Additional Data
-
-Additional data may be displayed in the list output and when using the
-``--name`` switch.
-
-- The SCM and disk usage of the project may be automatically determined.
-- The project tree is obtained with the ``tree`` command.
-
-#### Generating a README
-
-The ``--name`` switch searches for a specific project and (if found) outputs
-project information in [Markdown][markdown] format:
-
-[markdown]: http://daringfireball.net/projects/markdown/
-
-    cd example_project;
-    lsprojects --name=example_project > README.markdown;
-
-Although you'll likely want to customize the output, this is handy for
-creating (or recreating) a README for the project.
 
 """
-    __version__ = "1.1.4-d"
+    __version__ = "1.2.0-d"
+
     # Define options and arguments.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
 
@@ -394,13 +566,6 @@ creating (or recreating) a README for the project.
         action="store_true",
         dest="include_disk",
         help="Calculate disk space. Takes longer to run."
-    )
-
-    parser.add_argument(
-        "--init",
-        action="store_true",
-        dest="initialize_project",
-        help="Initialize project meta files. Project name is required."
     )
 
     parser.add_argument(
@@ -449,16 +614,8 @@ creating (or recreating) a README for the project.
         version="%(prog)s" + " %s %s" % (__version__, __date__)
     )
 
+    # Parse arguments. Help, version, and usage errors are automatically handled.
     args = parser.parse_args()
-
-    # Initialize a project as requested.
-    if args.initialize_project:
-        if not args.project_name:
-            print("Project name is required.")
-            sys.exit(EXIT_USAGE)
-
-        initialize_project(args.project_name, path=args.project_home, status=args.status)
-        sys.exit(EXIT_OK)
 
     # Handle project by name requests.
     if args.project_name:

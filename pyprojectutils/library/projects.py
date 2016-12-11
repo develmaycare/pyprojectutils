@@ -2,10 +2,11 @@
 
 import commands
 import os
-from config import Config, Section
-from packaging import PackageConfig
-from constants import ENVIRONMENTS, PROJECT_HOME
-from shortcuts import parse_template, read_file, write_file
+from .config import Config, Section
+from .constants import DEVELOPER_CODE, DEVELOPER_NAME, ENVIRONMENTS, PROJECT_HOME
+from .organizations import Business, Client
+from .packaging import PackageConfig
+from .shortcuts import parse_template, read_file, write_file, print_info
 
 # Constants
 
@@ -17,13 +18,19 @@ tmp
 """
 
 PROJECT_INI_TEMPLATE = """[project]
+category = $category
 description = $description
 status = $status
 title = $title
+type = $type
 
 [business]
-code = TBD
-name = $organization
+code = $business_code
+name = $business_name
+
+[client]
+code = $client_code
+name = $client_name
 
 [domain]
 name = example
@@ -177,114 +184,6 @@ def get_project_types(path):
 
     return sorted(types)
 
-
-def initialize_project(name, description=None, license_code=None, organization=None, path=None, prompt=True, status=None, title=None):
-    """Initialize a project by creating standard meta files.
-
-    :param name: The project name.
-    :type name: str
-
-    :param description: A brief description of the project.
-    :type description: str
-
-    :param license_code: The license code for the project. See ``lice --help``. Defaults to ``bsd3``.
-    :type license_code: str
-
-    :param organization: The organization name.
-    :type organization: str
-
-    :param path: Path to where projects are stored.
-    :type path: str
-
-    :param prompt: Indicates whether the function will prompt for missing data.
-    :type prompt: bool
-
-    :param status: Project status. Defaults to ``development``.
-    :type status: str
-
-    :param title: Title of the project. Defaults to project name.
-    :type title: str
-
-    .. note::
-        This function may be executed multiple times on the same project.
-
-    """
-    if prompt:
-        if not title:
-            title = raw_input("Title: ")
-
-        if not description:
-            description = raw_input("Description: ")
-
-        if not organization:
-            organization = raw_input("Organization: ")
-
-        if not status:
-            status = raw_input("Status [development]: ")
-
-        if not license_code:
-            print("afl3, agpl3, apache, bsd2, bsd3, cc0, cc_by, cc_by_nc, cc_by_nc_nd, cc_by_nc_sa, cc_by_nd, "
-                  "cc_by_sa, cddl, epl, gpl2, gpl3, isc, lgpl, mit, mpl, wtfpl, zlib")
-            license_code = raw_input("License [bsd3]: ")
-
-    project_root = os.path.join(path or PROJECT_HOME, name)
-    if not os.path.exists(project_root):
-        print("Creating project directory: %s" % project_root)
-        os.makedirs(project_root)
-
-    description_path = os.path.join(project_root, "DESCRIPTION.txt")
-    if not os.path.exists(description_path):
-        print("Writing DESCRIPTION.txt file: %s" % description_path)
-        write_file(description_path, description)
-
-    gitignore_path = os.path.join(project_root, ".gitignore")
-    if not os.path.exists(gitignore_path):
-        print("Creating .gitignore file: %s" % gitignore_path)
-        write_file(gitignore_path, GITIGNORE_TEMPLATE)
-
-    readme = os.path.join(project_root, "README.markdown")
-    if not os.path.exists(readme):
-        print("Writing default README.markdown file: %s" % readme)
-        context = {
-            'description': description or "",
-            'title': title or name,
-        }
-        content = parse_template(context, README_TEMPLATE)
-        write_file(readme, content)
-
-    requirements_path = os.path.join(project_root, "requirements.pip")
-    if not os.path.exists(requirements_path):
-        print("Creating empty requirements file.")
-        commands.getstatusoutput("touch %s" % requirements_path)
-
-    version = os.path.join(project_root, "VERSION.txt")
-    if not os.path.exists(version):
-        print("Creating initial version file: %s" % version)
-        write_file(version, "0.1.0-d")
-
-    license_path = os.path.join(project_root, "LICENSE.txt")
-    if not os.path.exists(license_path):
-        if not license_code:
-            license_code = "bsd3"
-
-        print("Creating %s license file: %s" % (license_code, license_path))
-        cmd = 'lice --org="%s" --proj="%s" %s > %s' % (organization, title, license_code, license_path)
-        # print(cmd)
-        commands.getstatusoutput(cmd)
-
-    project_ini = os.path.join(project_root, "project.ini")
-    if not os.path.exists(project_ini):
-        print("Create default project.ini file: %s" % project_ini)
-        context = {
-            'description': description or "",
-            'organization': organization or "",
-            'status': status or "development",
-            'title': title or name,
-        }
-        content = parse_template(context, PROJECT_INI_TEMPLATE)
-        write_file(project_ini, content)
-
-
 # Classes
 
 
@@ -300,11 +199,15 @@ class Project(Config):
         :type path: str
 
         """
+        self.business = None
+        self.category = None
+        self.client = None
         self.config_exists = None
         self.description = None
         self.disk = "TBD"
         self.is_dirty = None
         self.is_loaded = False
+        self.license = None
         self.name = name
         self.org = "Unknown"
         self.root = os.path.join(path or PROJECT_HOME, name)
@@ -313,6 +216,7 @@ class Project(Config):
         self.tags = list()
         self.title = None
         self.type = "project"
+
         self._requirements = list()
 
         # Handle version.
@@ -348,6 +252,36 @@ class Project(Config):
     @property
     def exists(self):
         return os.path.exists(self.root)
+
+    def get_business(self):
+        """Get the project business instance.
+
+        :rtype: Business
+
+        .. note::
+            This method exists because we don't always know if ``business`` has been populated. This allows us to return
+            a default even if the client has not been defined.
+
+        """
+        if self.has_business:
+            return self.business
+
+        return Business(DEVELOPER_NAME, code=DEVELOPER_CODE)
+
+    def get_client(self):
+        """Get the project client instance.
+
+        :rtype: Client
+
+        .. note::
+            This method exists because we don't always know if ``client`` has been populated. This allows us to return a
+            default even if the client has not been defined.
+
+        """
+        if self.has_client:
+            return self.client
+
+        return Client("Unidentified", code="UNK")
 
     def get_context(self):
         """Get project data as a dictionary.
@@ -401,6 +335,121 @@ class Project(Config):
                     return config.get_packages(env=env, manager=manager)
 
         return None
+
+    @property
+    def has_business(self):
+        """Indicates whether the project has a business (developer).
+
+        :rtype: bool
+
+        """
+        return self.business is not None
+
+    @property
+    def has_client(self):
+        """Indicates whether the project has a client.
+
+        :rtype: bool
+
+        """
+        return self.client is not None
+
+    def initialize(self, display=True):
+        """Initialize the project, creating various meta files as needed.
+
+        :param display: Display output or not.
+        :type display: bool
+
+        This method does the following:
+
+        - Creates the project root if it does not exist.
+        - Writes ``DESCRIPTION.txt`` if one does not exist and ``description`` is set.
+        - Writes a starter ``.gitignore`` file if one does not exist.
+        - Writes a default (and very bare) ``README.markdown`` file if one does not exist.
+        - Creates an empty ``requirements.pip`` file if one does not exist.
+        - Creates a ``LICENSE.txt`` file if one does not exist and ``license`` is set.
+        - Writes a starter ``project.ini`` file if one does not exist.
+
+        .. note::
+            It is safe to run this method multiple times.
+
+        .. versionadded:: 0.16.0-d
+
+        """
+        if not os.path.exists(self.root):
+            if display:
+                print_info("Creating project directory: %s" % self.root)
+
+            os.makedirs(self.root)
+
+        description_path = os.path.join(self.root, "DESCRIPTION.txt")
+        if self.description and not os.path.exists(description_path):
+            if display:
+                print_info("Writing DESCRIPTION.txt file: %s" % description_path)
+
+            write_file(description_path, self.description)
+
+        gitignore_path = os.path.join(self.root, ".gitignore")
+        if not os.path.exists(gitignore_path):
+            if display:
+                print_info("Creating .gitignore file: %s" % gitignore_path)
+
+            write_file(gitignore_path, GITIGNORE_TEMPLATE)
+
+        license_path = os.path.join(self.root, "LICENSE.txt")
+        if self.license and not os.path.exists(license_path):
+            print_info("Creating %s license file: %s" % (self.license, license_path))
+
+            if self.has_client:
+                org = self.client.name
+            elif self.has_business:
+                org = self.business.name
+            else:
+                org = DEVELOPER_NAME
+
+            cmd = 'lice --org="%s" --proj="%s" %s > %s' % (org, self.title, self.license, license_path)
+            # print(cmd)
+            commands.getstatusoutput(cmd)
+
+        ini_path = os.path.join(self.root, "project.ini")
+        if not os.path.exists(ini_path):
+            print_info("Create default project.ini file: %s" % ini_path)
+
+            business = self.get_business()
+            client = self.get_client()
+
+            context = {
+                'business_code': business.code,
+                'business_name': business.name,
+                'client_code': client.code,
+                'client_name': client.name,
+                'description': self.description or "",
+                'status': self.status or "development",
+                'title': self.title or self.name,
+            }
+
+            content = parse_template(context, PROJECT_INI_TEMPLATE)
+            write_file(ini_path, content)
+
+        readme_path = os.path.join(self.root, "README.markdown")
+        if not os.path.exists(readme_path):
+            print_info("Writing default README.markdown file: %s" % readme_path)
+            context = {
+                'description': self.description or "",
+                'title': self.title or self.name,
+            }
+            content = parse_template(context, README_TEMPLATE)
+            write_file(readme_path, content)
+
+        requirements_path = os.path.join(self.root, "requirements.pip")
+        if not os.path.exists(requirements_path):
+            print_info("Creating empty requirements file.")
+            commands.getstatusoutput("touch %s" % requirements_path)
+
+        version_path = os.path.join(self.root, "VERSION.txt")
+        if not os.path.exists(version_path):
+            print_info("Writing initial version file: %s" % version_path)
+            write_file(version_path, self.version)
 
     def load(self, include_disk=False):
         """Load the project.

@@ -22,10 +22,11 @@ __all__ = (
 class BaseOrganization(object):
     """Base for organization classes."""
 
-    def __init__(self, name, code=None, contact=None):
+    def __init__(self, name, code=None, contact=None, projects=None):
         self.code = code or self.get_default_code(name)
         self.contact = contact
         self.name = name
+        self.projects = projects or list()
 
     @staticmethod
     def get_default_code(name):

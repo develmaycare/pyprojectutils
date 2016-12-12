@@ -1,5 +1,6 @@
 # Imports
 
+from collections import OrderedDict
 import commands
 import os
 from .config import Config, Section
@@ -49,9 +50,6 @@ $description
 __all__ = (
     "autoload_project",
     "get_projects",
-    "get_project_clients",
-    "get_project_statuses",
-    "get_project_types",
     "initialize_project",
     "Project",
 )
@@ -93,6 +91,58 @@ def autoload_project(name, include_disk=False, path=None):
     return Project(name, path=path)
 
 
+def get_clients(path):
+    d = dict()
+    projects = get_projects(path)
+
+    for p in projects:
+        client = p.get_client()
+
+        if client.code in d.keys():
+            d[client.code].projects.append(p)
+        else:
+            client.projects.append(p)
+            d[client.code] = client
+
+    return OrderedDict(sorted(d.items(), key=lambda t: t[0]))
+
+
+def get_distinct_project_attributes(attribute, path=PROJECT_HOME):
+    """Get distinct values of the named attribute.
+
+    .. versionadded:: 0.16.0-d
+
+    :param attribute: The name of the attribute.
+    :type attribute: str
+
+    :param path: The path to where projects are stored.
+    :type path: str
+
+    :rtype: OrderedDict
+    :returns: Returns a dictionary where each distinct values is a dictionary key and the total project count is the
+              dictionary value. Keys are sorted alphabetically.
+
+    .. note::
+        If the given ``attribute`` does not exist on the :py:class:`Project`, the resulting ``AttributeError`` is
+        trapped and ``{'Invalid Project Attribute': attribute}`` is returned.
+
+    """
+    d = dict()
+    projects = get_projects(path)
+    for p in projects:
+        try:
+            value = getattr(p, attribute)
+        except AttributeError:
+            return {'Invalid Project Attribute': attribute}
+
+        if value in d.keys():
+            d[value] += 1
+        else:
+            d[value] = 1
+
+    return OrderedDict(sorted(d.items(), key=lambda t: t[0]))
+
+
 def get_projects(path, criteria=None, include_disk=False, show_all=False):
     """Get a list of projects.
 
@@ -111,6 +161,10 @@ def get_projects(path, criteria=None, include_disk=False, show_all=False):
     :type show_all: bool
 
     :rtype: list
+
+    .. versionchanged:: 0.16.0-d
+        When filtering criteria includes ``name`` or ``description``, these are handled using partial rather than full
+        matching. The matching is also case insensitive.
 
     """
     names = list()
@@ -143,46 +197,26 @@ def get_projects(path, criteria=None, include_disk=False, show_all=False):
         # Filter based on criteria, which should be a dict.
         if criteria:
             for field, search in criteria.items():
-                value = getattr(project, field)
-                if search == value:
-                    projects.append(project)
+
+                # Handle the name and description attributes differently.
+                if field in ("description", "name"):
+                    value = getattr(project, field).lower()
+                    search = search.lower()
+                    if search in value:
+                        projects.append(project)
+                elif field == "tag":
+                    tags = getattr(project, "tags")
+                    if search in tags:
+                        projects.append(project)
+                else:
+                    value = getattr(project, field)
+                    if search == value:
+                        projects.append(project)
         else:
             projects.append(project)
 
     return projects
 
-
-def get_project_clients(path):
-    clients = list()
-
-    projects = get_projects(path)
-    for p in projects:
-        if p.org not in clients:
-            clients.append(p.org)
-
-    return sorted(clients)
-
-
-def get_project_statuses(path):
-    statuses = list()
-
-    projects = get_projects(path)
-    for p in projects:
-        if p.status not in statuses:
-            statuses.append(p.status)
-
-    return sorted(statuses)
-
-
-def get_project_types(path):
-    types = list()
-
-    projects = get_projects(path)
-    for p in projects:
-        if p.type not in types:
-            types.append(p.type)
-
-    return sorted(types)
 
 # Classes
 
@@ -200,7 +234,7 @@ class Project(Config):
 
         """
         self.business = None
-        self.category = None
+        self.category = None or "uncategorized"
         self.client = None
         self.config_exists = None
         self.description = None
@@ -334,7 +368,7 @@ class Project(Config):
                 if config.load():
                     return config.get_packages(env=env, manager=manager)
 
-        return None
+        return list()
 
     @property
     def has_business(self):
@@ -413,7 +447,7 @@ class Project(Config):
 
         ini_path = os.path.join(self.root, "project.ini")
         if not os.path.exists(ini_path):
-            print_info("Create default project.ini file: %s" % ini_path)
+            print_info("Creating default project.ini file: %s" % ini_path)
 
             business = self.get_business()
             client = self.get_client()
@@ -421,12 +455,15 @@ class Project(Config):
             context = {
                 'business_code': business.code,
                 'business_name': business.name,
+                'category': self.category,
                 'client_code': client.code,
                 'client_name': client.name,
                 'description': self.description or "",
                 'status': self.status or "development",
                 'title': self.title or self.name,
+                'type': self.type,
             }
+            print context
 
             content = parse_template(context, PROJECT_INI_TEMPLATE)
             write_file(ini_path, content)
@@ -450,6 +487,8 @@ class Project(Config):
         if not os.path.exists(version_path):
             print_info("Writing initial version file: %s" % version_path)
             write_file(version_path, self.version)
+
+        return True
 
     def load(self, include_disk=False):
         """Load the project.
@@ -506,6 +545,7 @@ class Project(Config):
 
         a.append("**Version**: %s  " % self.version)
         a.append("**Status**: %s  " % self.status)
+        a.append("**Category**: %s  " % self.category)
         a.append("**Type**: %s  " % self.type)
         a.append("**Disk Usage**: %s  " % self._get_disk())
         a.append("**Source Code Management**: %s  " % self._get_scm())
@@ -545,7 +585,7 @@ class Project(Config):
         # Include the project tree.
         a.append("## Tree")
         a.append("")
-        status, output = commands.getstatusoutput("tree %s" % self.root)
+        status, output = commands.getstatusoutput("cd %s && tree" % self.root)
         for line in output.split("\n"):
             a.append("    %s" % line)
 
@@ -559,21 +599,20 @@ class Project(Config):
         return output.strip()
 
     def _get_org(self):
-        obj = getattr(self, "client", None)
-        if obj:
-            try:
-                return obj.code
-            except AttributeError:
-                return "Unidentified"
+        """Get the organization identifier.
 
-        obj = getattr(self, "business", None)
-        if obj:
-            try:
-                return obj.code
-            except AttributeError:
-                return "Internal"
+        :rtype: str
 
-        return "Unknown"
+        .. note::
+            The client is checked first, then the business. The ``code`` attribute is returned.
+
+        """
+        if self.has_client:
+            return self.client.code
+        elif self.has_business:
+            return self.business.code
+        else:
+            return "???"
 
     def _get_path(self, name):
         return os.path.join(self.root, name)
@@ -609,8 +648,14 @@ class Project(Config):
             return "0.1.0-d"
 
     def _load_section(self, name, values):
-        """Overridden to add project section values to the current instance."""
-        if name == "project":
+        """Overridden to add business, client, and project section values to the current instance."""
+        if name == "buiness":
+            section = Business(values.pop('name'), **values)
+            setattr(self, name, section)
+        elif name == "client":
+            section = Client(values.pop('name'), **values)
+            setattr(self, name, section)
+        elif name == "project":
             for key in values.keys():
                 setattr(self, key, values[key])
         else:

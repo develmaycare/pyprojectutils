@@ -49,6 +49,8 @@ Separation
 
 We maintain a fairly strict separation between re-usable module code and the code in the command line functions.
 
+Module code should capture errors.
+
 Naming Conventions
 ..................
 

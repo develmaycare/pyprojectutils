@@ -51,10 +51,10 @@ def get_input(label, choices=None, default=None, required=False):
     :type label: str
 
     :param choices: List of valid choices, if any.
-    :type choices: list
+    :type choices: list[str]
 
     :param default: Default value if nothing is entered.
-    :type default: str
+    :type default: str | None
 
     :param required: Indicates input is required.
     :type required: bool
@@ -98,6 +98,8 @@ def get_input(label, choices=None, default=None, required=False):
 
         if required:
             return get_input(label, choices=choices, default=default, required=required)
+
+    return value
 
 
 def parse_template(context, template):

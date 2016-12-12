@@ -6,24 +6,23 @@ import sys
 from library.constants import BASE_ENVIRONMENT, DEVELOPMENT, ENVIRONMENTS, EXIT_OK, EXIT_INPUT, EXIT_OTHER, EXIT_USAGE,\
     LICENSE_CHOICES, PROJECT_HOME
 from library.exceptions import OutputError
-from library.projects import autoload_project, get_project_types, get_project_clients, get_project_statuses, \
-    get_projects, Project
+from library.projects import autoload_project, get_distinct_project_attributes, get_projects, Project
 from library.organizations import BaseOrganization, Business, Client
 from library.passwords import RandomPassword
 from library.releases import Version
-from library.shortcuts import get_input, parse_template, write_file, print_error
+from library.shortcuts import get_input, parse_template, write_file, print_error, print_warning
 
 
 def generate_password():
     """Generate a random password."""
 
-    __author__ = "Shawn Davis <shawn@ptltd.co>"
-    __date__ = "2016-11-19"
+    __author__ = "Shawn Davis <shawn@develmaycare.com>"
+    __date__ = "2016-12-11"
     __help__ = """
 We often need to generate passwords automatically. This utility does just
-that. Install pyprojectutils it during deployment to create passwords on the fly.
+that. Install pyprojectutils during deployment to create passwords on the fly.
     """
-    __version__ = "0.10.1-d"
+    __version__ = "0.10.2-d"
 
     # Define options and arguments.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
@@ -58,7 +57,7 @@ that. Install pyprojectutils it during deployment to create passwords on the fly
         "--version",
         action="version",
         help="Show verbose version information and exit.",
-        version="%(prog)s" + " %s %s" % (__version__, __date__)
+        version="%(prog)s" + " %s %s by %s" % (__version__, __date__, __author__)
     )
 
     # This will display help or input errors as needed.
@@ -85,52 +84,14 @@ that. Install pyprojectutils it during deployment to create passwords on the fly
 
 
 def package_parser():
-    """Parse a packages.ini file for a project."""
+    """List the packages for a given project."""
 
-    __date__ = "2016-11-19"
+    __author__ = "Shawn Davis <shawn@develmaycare.com>"
+    __date__ = "2016-12-11"
     __help__ = """
-#### Location of the INI
-
-The command will look for the ``packages.ini`` file in these locations within project root:
-
-1. ``deploy/requirements/packages.ini``
-2. ``requirements/packages.ini``
-3. ``requirements.ini``
-
-#### Format of INI
-
-The ``packages.ini`` contains a section for each package.
-
-    [package_name]
-    ...
-
-The following options are recognized:
-
-- branch: The branch to use when downloading the package. Not supported by all package managers.
-- cmd: The install command. This is generated automatically unless this option is given.
-- docs: The URL for package documentation.
-- egg: The egg name to use for a Python packackage install.
-- env: The environment where this package is used.
-- home: The URL for the package home page.
-- manager: The package manager to use. Choices are apt, brew, gem, npm, and pip.
-- note: Any note regarding the package. For example, how or why you are using it.
-- scm: The URL for the package's source code management tool.
-- title: A title for the package.
-- version: The version spec to use for installs. For example: ``>=1.10``
-
-#### Output Formats
-
-Several output formats are supported. All are sent to standard out unless a file is specified using ``--output``.
-
-- ansible: For Ansible deployment.
-- command: The install command.
-- markdown: For Markdown.
-- plain: For requirements files.
-- rst: For ReStructuredText.
-- table (default): Lists the packages in tabular format.
 
     """
-    __version__ = "0.5.1-d"
+    __version__ = "0.5.2-d"
 
     # Define options and arguments.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
@@ -191,7 +152,7 @@ Several output formats are supported. All are sent to standard out unless a file
         "--version",
         action="version",
         help="Show verbose version information and exit.",
-        version="%(prog)s" + " %s %s" % (__version__, __date__)
+        version="%(prog)s" + " %s %s by %s" % (__version__, __date__, __author__)
     )
 
     # Parse arguments.
@@ -308,9 +269,9 @@ def project_init():
 
     # Define command meta data.
     __author__ = "Shawn Davis <shawn@develmaycare.com>"
-    __date__ = "2016-12-10"
+    __date__ = "2016-12-11"
     __help__ = """"""
-    __version__ = "0.1.0-d"
+    __version__ = "0.1.1-d"
 
     # Initialize the argument parser.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
@@ -321,7 +282,6 @@ def project_init():
     )
 
     parser.add_argument(
-        "-b=",
         "--business=",
         dest="business_name",
         help="Set the name of the developer organization."
@@ -347,9 +307,9 @@ def project_init():
     )
 
     parser.add_argument(
-        "--client-code=",
+        "-C=",
         dest="client_code",
-        help="Client code. If ommited it is automatically dervied from the client name."
+        help="Client code. If omitted it is automatically derived from the client name."
     )
 
     parser.add_argument(
@@ -384,7 +344,6 @@ def project_init():
     parser.add_argument(
         "-s=",
         "--status=",
-        default=DEVELOPMENT,
         dest="status",
         help="Filter by project status. Use ? to list available statuses."
     )
@@ -416,7 +375,7 @@ def project_init():
         "--version",
         action="version",
         help="Show verbose version information and exit.",
-        version="%(prog)s" + " %s %s" % (__version__, __date__)
+        version="%(prog)s" + " %s %s by %s" % (__version__, __date__, __author__)
     )
 
     # Parse arguments. Help, version, and usage errors are automatically handled.
@@ -462,8 +421,8 @@ def project_init():
             client_code = None
             client_name = None
 
-        if args.busines_name:
-            business_name = args.busines_name
+        if args.business_name:
+            business_name = args.business_name
         else:
             business_name = get_input("Business/Developer Name", required=True)
 
@@ -506,7 +465,7 @@ def project_init():
         client = None
 
     # Create a project instance.
-    project = Project(args.project_name, path=args.path)
+    project = Project(args.project_name, path=args.project_home)
 
     # Set project values from input.
     project.business = business
@@ -528,12 +487,22 @@ def project_init():
 def project_parser():
     """Find, parse, and collect project information."""
 
-    __date__ = "2016-12-10"
-    __help__ = """
+    __author__ = "Shawn Davis <shawn@develmaycare.com>"
+    __date__ = "2016-12-11"
+    __help__ = """FILTERING
 
+Use the -f/--filter option to by most project attributes:
+
+- category
+- description (partial, case insensitive)
+- name (partial, case insensitive)
+- org (business/client code)
+- scm
+- tag
+- type
 
 """
-    __version__ = "1.2.0-d"
+    __version__ = "2.0.0-d"
 
     # Define options and arguments.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
@@ -543,21 +512,14 @@ def project_parser():
         "--all",
         action="store_true",
         dest="show_all",
-        help="Show projects even if there is no project.ini"
-    )
-
-    parser.add_argument(
-        "-c=",
-        "--client=",
-        dest="client_code",
-        help="Filter by client organization. Use ? to list organizations"
+        help="Show projects even if there is no project.ini file."
     )
 
     parser.add_argument(
         "--dirty",
         action="store_true",
         dest="show_dirty",
-        help="Only show projects with dirty repos"
+        help="Only show projects with dirty repos."
     )
 
     parser.add_argument(
@@ -566,6 +528,14 @@ def project_parser():
         action="store_true",
         dest="include_disk",
         help="Calculate disk space. Takes longer to run."
+    )
+
+    parser.add_argument(
+        "-f=",
+        "--filter=",
+        action="append",
+        dest="criteria",
+        help="Specify filter in the form of key:value. This may be repeated. Use ? to list available values."
     )
 
     parser.add_argument(
@@ -583,20 +553,6 @@ def project_parser():
         help="Path to where projects are stored. Defaults to %s" % PROJECT_HOME
     )
 
-    parser.add_argument(
-        "-s=",
-        "--status=",
-        dest="status",
-        help="Filter by project status. Use ? to list available statuses."
-    )
-
-    parser.add_argument(
-        "-t=",
-        "--type=",
-        dest="project_type",
-        help="Filter by project type. Use ? to list available types."
-    )
-
     # Access to the version number requires special consideration, especially
     # when using sub parsers. The Python 3.3 behavior is different. See this
     # answer: http://stackoverflow.com/questions/8521612/argparse-optional-subparser-for-version
@@ -611,11 +567,39 @@ def project_parser():
         "--version",
         action="version",
         help="Show verbose version information and exit.",
-        version="%(prog)s" + " %s %s" % (__version__, __date__)
+        version="%(prog)s" + " %s %s by %s" % (__version__, __date__, __author__)
     )
 
     # Parse arguments. Help, version, and usage errors are automatically handled.
     args = parser.parse_args()
+    # print args
+
+    # Capture (and validate) filtering options.
+    criteria = dict()
+    if args.criteria:
+        for c in args.criteria:
+
+            # We need to test for the proper format of the each filter given.
+            try:
+                key, value = c.split(":")
+            except ValueError:
+                print_warning('Filter must be given in "key:value" format: %s' % c)
+                sys.exit(EXIT_INPUT)
+
+            # Handle requests to display available values by which filtering may occur. Otherwise, set criteria.
+            if value == "?":
+                print(key)
+                print("-" * 80)
+
+                d = get_distinct_project_attributes(key, path=args.project_home)
+                for name, count in d.items():
+                    print("%s (%s)" % (name, count))
+
+                print("")
+
+                sys.exit(EXIT_OK)
+            else:
+                criteria[key] = value
 
     # Handle project by name requests.
     if args.project_name:
@@ -633,74 +617,25 @@ def project_parser():
 
         sys.exit(EXIT_OK)
 
-    # Get the available types.
-    project_types = get_project_types(args.project_home)
-
-    # List the clients as requested.
-    if args.client_code == "?":
-        print("Available Client Codes")
-        print("-" * 80)
-
-        for c in get_project_clients(args.project_home):
-            print(c)
-
-        sys.exit(EXIT_OK)
-
-    # List the status as requested.
-    if args.status == "?":
-        print("Available Status Codes")
-        print("-" * 80)
-
-        status_list = get_project_statuses(args.project_home)
-        for s in status_list:
-            print(s)
-
-        sys.exit(EXIT_OK)
-
-    # List the types as requested.
-    if args.project_type == "?":
-        print("Available Project Types")
-        print("-" * 80)
-
-        for t in project_types:
-            print(t)
-
-        sys.exit(EXIT_OK)
-
     # Print the report heading.
     heading = "Projects"
-    if args.project_type:
-        heading += "(%s)" % args.project_type
+    if "type" in criteria:
+        heading += " (%s)" % criteria['type']
 
-    print("=" * 105)
+    print("=" * 120)
     print(heading)
-    print("=" * 105)
+    print("=" * 120)
 
     # Print the column headings.
-    if args.project_type:
-        print("%-40s %-10s %-11s %-15s %-5s %-4s" % ("Title", "Client", "Version", "Status", "Disk", "SCM"))
-    else:
-        print(
-            "%-40s %-10s %-10s %-10s %-15s %-10s %-4s"
-            % ("Title", "Type", "Client", "Version", "Status", "Disk", "SCM")
-        )
+    print(
+        "%-30s %-20s %-15s %-5s %-10s %-15s %-10s %-4s"
+        % ("Title", "Category", "Type", "Org", "Version", "Status", "Disk", "SCM")
+    )
+    print("-" * 120)
 
-    print("-" * 105)
-
-    # Build the criteria.
-    criteria = dict()
-
-    if args.client_code:
-        criteria['org'] = args.client_code
-
+    # Add criteria not included with the --filter option.
     if args.show_dirty:
         criteria['is_dirty'] = True
-
-    if args.status:
-        criteria['status'] = args.status
-
-    if args.project_type:
-        criteria['type'] = args.project_type
 
     # Print the rows.
     projects = get_projects(
@@ -720,8 +655,8 @@ def project_parser():
     error_count = 0
     for p in projects:
 
-        if len(p.title) > 40:
-            title = p.title[:37] + "..."
+        if len(p.title) > 30:
+            title = p.title[:27] + "..."
         else:
             title = p.title
 
@@ -743,23 +678,17 @@ def project_parser():
         else:
             scm = p.scm
 
-        if args.project_type:
-            print(
-                "%-40s %-10s %-10s %-15s %-5s %-4s %-1s"
-                % (title, p.org, p.version, p.status, p.disk, p.scm, config_exists)
-            )
-        else:
-            print(
-                "%-40s %-10s %-10s %-10s %-15s %-10s %-4s %-1s"
-                % (title, p.type, p.org, p.version, p.status, p.disk, scm, config_exists)
-            )
+        print(
+            "%-30s %-20s %-15s %-5s %-10s %-15s %-10s %-4s %-1s"
+            % (title, p.category, p.type, p.org, p.version, p.status, p.disk, scm, config_exists)
+        )
 
     if len(projects) == 1:
         label = "result"
     else:
         label = "results"
 
-    print("-" * 105)
+    print("-" * 120)
     print("")
     print("%s %s." % (len(projects), label))
 
@@ -774,7 +703,7 @@ def project_parser():
     elif dirty_count > 1:
         print("%s projects with uncommitted changes." % dirty_count)
         for i in dirty_list:
-            print("    cd %s && git st" % i)
+            print("    cd %s/%s && git st" % (PROJECT_HOME, i))
     else:
         print("No projects with uncommitted changes.")
 
@@ -782,87 +711,83 @@ def project_parser():
     sys.exit(EXIT_OK)
 
 
+def project_status():
+    """Get information on a project."""
+
+    # Define command meta data.
+    __author__ = "Shawn Davis <shawn@develmaycare.com>"
+    __date__ = "2016-12-11"
+    __help__ = """"""
+    __version__ = "0.2.0-d"
+
+    # Initialize the argument parser.
+    parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
+
+    parser.add_argument(
+        "project_name",
+        help="The name of the project. The directory will be created if it does not exist in $PROJECT_HOME",
+    )
+
+    parser.add_argument(
+        "-d",
+        "--disk",
+        action="store_true",
+        dest="include_disk",
+        help="Calculate disk space. Takes longer to run."
+    )
+
+    parser.add_argument(
+        "-p=",
+        "--path=",
+        default=PROJECT_HOME,
+        dest="project_home",
+        help="Path to where projects are stored. Defaults to %s" % PROJECT_HOME
+    )
+
+    # Access to the version number requires special consideration, especially
+    # when using sub parsers. The Python 3.3 behavior is different. See this
+    # answer: http://stackoverflow.com/questions/8521612/argparse-optional-subparser-for-version
+    # parser.add_argument('--version', action='version', version='%(prog)s 2.0')
+    parser.add_argument(
+        "-v",
+        action="version",
+        help="Show version number and exit.",
+        version=__version__
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        help="Show verbose version information and exit.",
+        version="%(prog)s" + " %s %s by %s" % (__version__, __date__, __author__)
+    )
+
+    # Parse arguments. Help, version, and usage errors are automatically handled.
+    args = parser.parse_args()
+
+    project = autoload_project(args.project_name, include_disk=args.include_disk, path=args.project_home)
+
+    if not project.is_loaded:
+        print_warning("Could not autoload the project: %s" % args.project_name)
+
+        if project.has_error:
+            print_error("Error: %s" % project.get_error())
+
+        sys.exit(EXIT_OTHER)
+
+    print(project.to_markdown())
+
+    sys.exit(EXIT_OK)
+
+
 def version_update():
     """Increment the version number immediately after checking out a release branch."""
 
-    __date__ = "2016-11-28"
+    __author__ = "Shawn Davis <shawn@develmaycare.com>"
+    __date__ = "2016-12-11"
     __help__ = """
-#### When to Use
-
-Generally, you want to increment the version number immediately after checking
-out a release branch. However, you may wish to bump the version any time
-during development, especially during early development where the MINOR
-and PATCH versions are changing frequently.
-
-Here is an example workflow:
-
-    # Get the current version and check out the next release.
-    versionbump myproject; # get the current version, example 1.2
-    git checkout -b release-1.3;
-
-    # Bump automatically sets the next minor version with a status of d.
-    versionbump myproject -m -s d;
-
-    # Commit the bump.
-    git commit -am "Version Bump";
-
-    # Go do the final work for the release.
-    # ...
-
-    # Merge the release.
-    git checkout master;
-    git merge --no-ff release-1.3;
-    git tag -a 1.3;
-
-    # Merge back to development.
-    git checkout development;
-    git merge --no-ff release-1.3;
-
-#### Semantic Versioning
-
-This utility makes use of [Semantic Versioning](semver.org). From the
-documentation:
-
-1. MAJOR version when you make incompatible API changes,
-2. MINOR version when you add functionality in a backwards-compatible manner,
-   and
-3. PATCH version when you make backwards-compatible bug fixes.
-
-Additional labels for pre-release and build metadata are available as
-extensions to the MAJOR.MINOR.PATCH format.
-
-**Status**
-
-We define the following status codes:
-
-- x Prototype, experimental. Use at your own risk.
-- d Development. Unstable, untested.
-- a Feature complete.
-- b Ready for testing and QA.
-- r Release candidate.
-- o Obsolete, deprecated, or defect. End of life.
-
-You may of course use whatever status you like.
-
-#### Release Versus Version
-
-**Release**
-
-A *release* is a collection of updates representing a new version of the
-product. A release is represented by the full string of MAJOR.MINOR.PATCH,
-and may optionally include the status and build until the release is live.
-
-The release is probably never displayed to Customers or Users.
-
-**Version**
-
-A *version* represents a specific state of the product. The version is
-represented by the MAJOR.MINOR string of the release.
-
-The version may be shown to Customers or Users.
 
     """
-    __version__ = "0.11.1-d"
+    __version__ = "0.12.0-d"
 
     # Define options and arguments.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
@@ -955,7 +880,7 @@ The version may be shown to Customers or Users.
         "--version",
         action="version",
         help="Show verbose version information and exit.",
-        version="%(prog)s" + " %s %s" % (__version__, __date__)
+        version="%(prog)s" + " %s %s by %s" % (__version__, __date__, __author__)
     )
 
     # This will display help or input errors as needed.

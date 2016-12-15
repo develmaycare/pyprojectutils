@@ -269,9 +269,9 @@ def project_init():
 
     # Define command meta data.
     __author__ = "Shawn Davis <shawn@develmaycare.com>"
-    __date__ = "2016-12-11"
+    __date__ = "2016-12-12"
     __help__ = """"""
-    __version__ = "0.1.1-d"
+    __version__ = "0.1.2-d"
 
     # Initialize the argument parser.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)

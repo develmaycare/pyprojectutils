@@ -463,7 +463,7 @@ class Project(Config):
                 'title': self.title or self.name,
                 'type': self.type,
             }
-            print context
+            # print context
 
             content = parse_template(context, PROJECT_INI_TEMPLATE)
             write_file(ini_path, content)

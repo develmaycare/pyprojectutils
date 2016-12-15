@@ -42,6 +42,7 @@ setup(
     entry_points={
       'console_scripts': [
           'bumpversion = pyprojectutils.cli:version_update',
+          'initproject = pyprojectutils.cli:project_init',
           'lspackages = pyprojectutils.cli:package_parser',
           'lsprojects = pyprojectutils.cli:project_parser',
           'randompw = pyprojectutils.cli:generate_password',

@@ -1,3 +1,4 @@
+[![Stories in Ready](https://badge.waffle.io/develmaycare/pyprojectutils.png?label=ready&title=Ready)](https://waffle.io/develmaycare/pyprojectutils)
 # Project Utils
 
 A collection of documentation and command line utilities for managing a software project.

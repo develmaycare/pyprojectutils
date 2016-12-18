@@ -2,6 +2,7 @@
 
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from datetime import datetime
+import os
 import sys
 from library.constants import BASE_ENVIRONMENT, DEVELOPMENT, ENVIRONMENTS, EXIT_OK, EXIT_INPUT, EXIT_OTHER, EXIT_USAGE,\
     LICENSE_CHOICES, PROJECT_HOME
@@ -11,6 +12,30 @@ from library.organizations import BaseOrganization, Business, Client
 from library.passwords import RandomPassword
 from library.releases import Version
 from library.shortcuts import get_input, parse_template, write_file, print_error, print_warning
+
+
+def project_list_autocomplete():
+    if not 'PYPROJECTUTILS_AUTOCOMPLETE' not in os.environ:
+        return
+
+    cwords = os.environ['COMP_WORDS'].split()[1:]
+    cword = int(os.environ['COMP_CWORD'])
+
+    try:
+        curr = cwords[cword - 1]
+    except IndexError:
+        curr = ''
+
+    # options = [('--help', False)]
+
+    projects = get_projects(PROJECT_HOME)
+    projects_list = list()
+    for p in projects:
+        projects_list.append(p.name)
+
+    print(' '.join(sorted(filter(lambda x: x.startswith(curr), projects_list))))
+
+    sys.exit(EXIT_OK)
 
 
 def generate_password():
@@ -882,6 +907,8 @@ def version_update():
         help="Show verbose version information and exit.",
         version="%(prog)s" + " %s %s by %s" % (__version__, __date__, __author__)
     )
+
+    project_list_autocomplete()
 
     # This will display help or input errors as needed.
     args = parser.parse_args()

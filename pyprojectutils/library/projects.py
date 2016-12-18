@@ -160,7 +160,7 @@ def get_projects(path, criteria=None, include_disk=False, show_all=False):
 
     :type show_all: bool
 
-    :rtype: list
+    :rtype: list[Project]
 
     .. versionchanged:: 0.16.0-d
         When filtering criteria includes ``name`` or ``description``, these are handled using partial rather than full

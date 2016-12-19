@@ -4,13 +4,167 @@ from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from datetime import datetime
 import sys
 from library.constants import BASE_ENVIRONMENT, DEVELOPMENT, ENVIRONMENTS, EXIT_OK, EXIT_INPUT, EXIT_OTHER, EXIT_USAGE,\
-    LICENSE_CHOICES, PROJECT_HOME
+    GITHUB_ENABLED, GITHUB_PASSWORD, GITHUB_USER, LICENSE_CHOICES, PROJECT_HOME
 from library.exceptions import OutputError
 from library.projects import autoload_project, get_distinct_project_attributes, get_projects, Project
 from library.organizations import BaseOrganization, Business, Client
 from library.passwords import RandomPassword
 from library.releases import Version
 from library.shortcuts import get_input, parse_template, write_file, print_error, print_warning
+
+# Commands
+
+
+def export_github_command():
+    """Export Github milestones and issues."""
+
+    # Define meta data.
+    __author__ = "Shawn Davis <shawn@develmaycare.com>"
+    __date__ = "2016-12-18"
+    __help__ = """
+We look for labels of ready, in progress, and review to determine the issue's current position in the workflow.
+        """
+    __version__ = "0.1.0-d"
+
+    # Define options and arguments.
+    parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
+
+    parser.add_argument(
+        "repo_name",
+        help="Name of the repository."
+    )
+
+    parser.add_argument(
+        "-L=",
+        "--label=",
+        default="enhancement",
+        dest="label",
+        help="The label used to identify road map items."
+    )
+
+    # Access to the version number requires special consideration, especially
+    # when using sub parsers. The Python 3.3 behavior is different. See this
+    # answer: http://stackoverflow.com/questions/8521612/argparse-optional-subparser-for-version
+    # parser.add_argument('--version', action='version', version='%(prog)s 2.0')
+    parser.add_argument(
+        "-v",
+        action="version",
+        help="Show version number and exit.",
+        version=__version__
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        help="Show verbose version information and exit.",
+        version="%(prog)s" + " %s %s by %s" % (__version__, __date__, __author__)
+    )
+
+    # There's no need to go on if the user name and password have not been defined.
+    if not GITHUB_ENABLED:
+        print_warning("GITHUB_USER and GITHUB_PASSWORD environment variables are required.")
+        sys.exit()
+
+    # We also can't continue if PyGithub is not installed.
+    try:
+        from github import Github
+    except ImportError:
+        print_error("The PyGithub package is required to use this command: pip install pygithub")
+
+    # This will display help or input errors as needed.
+    args = parser.parse_args()
+    # print args
+
+    # Initialize the connection to github.
+    gh = Github(GITHUB_USER, GITHUB_PASSWORD)
+
+    # Seems like loading the user is required to get at the other data.
+    user = gh.get_user()
+
+    # Get the repo instance.
+    repo = user.get_repo(args.repo_name)
+
+    # Get the issues in the repo. Assemble the output.
+    issues = list()
+    for i in repo.get_issues():
+        line = list()
+
+        # We are only interested in issues that pertain to features.
+        labels = list()
+        for l in i.labels:
+            labels.append(l.name)
+
+        if args.label not in labels:
+            continue
+
+        # Determine the current workflow of the issue.
+        if "ready" in labels:
+            status = "Next Up"
+        elif "in progress" in labels:
+            status = "In Progress"
+        elif "review" in labels:
+            status = "Review"
+        else:
+            status = "Planning"
+
+        # Get the milestone.
+        milestone = i.milestone
+        if milestone:
+            feature_set = milestone.title
+        else:
+            feature_set = ""
+
+        # Determine the start date.
+        start_date = ""
+
+        # Get the end date.
+        end_date = i.end_date or ""
+
+        # item, desc, start, end, bucket, status, feature set
+        line.append(i.title, i.body, start_date, end_date, "", status, feature_set)
+
+    # item (title)
+    # desc (body)
+    # start (?)
+    # end (due_on)
+    # bucket
+    # assignees
+    # feature set (milestone.title)
+    #
+    # Milestone
+    # title
+    # description
+    # due_on
+
+    # full_name = develmaycare/repo_name
+    # name = repo_name
+    # repos = user.get_repos()
+    # for r in repos:
+    #     print r.name, r.has_wiki
+
+    # repo = user.get_repo("pyprojectutils")
+    #
+    # milestones = repo.get_milestones(state="open")
+    # for m in milestones:
+    #     print m.title, m.due_on
+    #     print m.description
+    #     print ""
+
+    # print repo.name
+    # print repo.description
+    # feature = repo.get_label("feature")
+    # issues = repo.get_issues(state="open", labels=[feature])
+    # for issue in issues:
+    #     print issue.title
+
+    # Roadmunk
+    # item (title), desc, start, end, bucket
+    # release, objective/category/theme/area, status, completion, owner/assignees
+
+    # Github Issue
+    # title, state, body, labels, comments
+
+    # Exit.
+    sys.exit(EXIT_OK)
 
 
 def generate_password():

@@ -12,6 +12,9 @@ __all__ = (
     "EXIT_OTHER",
     "EXIT_USAGE",
     "EXPERIMENTAL",
+    "GITHUB_ENABLED",
+    "GITHUB_PASSWORD",
+    "GITHUB_USER",
     "LICENSE_CHOICES",
     "PROJECT_HOME",
     "TESTING",
@@ -93,3 +96,13 @@ LICENSE_CHOICES = (
     "wtfpl",
     "zlib",
 )
+
+# Github integration is only possible if the user sets a user and password in the local environment.
+try:
+    GITHUB_USER = os.environ['GITHUB_USER']
+    GITHUB_PASSWORD = os.environ['GITHUB_PASSWORD']
+    GITHUB_ENABLED = True
+except KeyError:
+    GITHUB_PASSWORD = None
+    GITHUB_USER = None
+    GITHUB_ENABLED = False

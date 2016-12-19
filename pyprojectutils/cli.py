@@ -3,6 +3,7 @@
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from datetime import datetime
 import sys
+from datetime_machine import DateTime
 from library.constants import BASE_ENVIRONMENT, DEVELOPMENT, ENVIRONMENTS, EXIT_OK, EXIT_INPUT, EXIT_OTHER, EXIT_USAGE,\
     GITHUB_ENABLED, GITHUB_PASSWORD, GITHUB_USER, LICENSE_CHOICES, PROJECT_HOME
 from library.exceptions import OutputError
@@ -20,11 +21,11 @@ def export_github_command():
 
     # Define meta data.
     __author__ = "Shawn Davis <shawn@develmaycare.com>"
-    __date__ = "2016-12-18"
+    __date__ = "2016-12-19"
     __help__ = """
 We look for labels of ready, in progress, and review to determine the issue's current position in the workflow.
         """
-    __version__ = "0.1.0-d"
+    __version__ = "0.1.1-d"
 
     # Define options and arguments.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
@@ -39,7 +40,7 @@ We look for labels of ready, in progress, and review to determine the issue's cu
         "--label=",
         default="enhancement",
         dest="label",
-        help="The label used to identify road map items."
+        help='The label used to identify road map items. Defaults to "enhancement".'
     )
 
     # Access to the version number requires special consideration, especially
@@ -84,17 +85,24 @@ We look for labels of ready, in progress, and review to determine the issue's cu
     repo = user.get_repo(args.repo_name)
 
     # Get the issues in the repo. Assemble the output.
+    count = 0
     issues = list()
+    issues.append("Item,Description,Start Date,End Date,Bucket,Status,Feature Set,Labels,Assignee")
     for i in repo.get_issues():
-        line = list()
 
         # We are only interested in issues that pertain to features.
         labels = list()
-        for l in i.labels:
-            labels.append(l.name)
+        for label in i.labels:
+
+            if "bucket" in label.name:
+                continue
+
+            labels.append(label.name)
 
         if args.label not in labels:
             continue
+
+        count += 1
 
         # Determine the current workflow of the issue.
         if "ready" in labels:
@@ -113,14 +121,67 @@ We look for labels of ready, in progress, and review to determine the issue's cu
         else:
             feature_set = ""
 
-        # Determine the start date.
-        start_date = ""
+        # Get the end date and calculate the start date.
+        if milestone and milestone.due_on:
 
-        # Get the end date.
-        end_date = i.end_date or ""
+            # We start with the due date of the milestone as a point of reference.
+            end = DateTime(milestone.due_on)
 
-        # item, desc, start, end, bucket, status, feature set
-        line.append(i.title, i.body, start_date, end_date, "", status, feature_set)
+            # The start date is calculated in reverse from the end date based 1 day per issue.
+            days_ago = -(count * 24)
+            start = DateTime(milestone.due_on)
+            start.increment(business_days=days_ago)
+
+            # Set the end and start datetimes.
+            end_date = end.dt
+            start_date = start.dt
+
+        else:
+            end_date = ""
+            start_date = ""
+
+        # Set the bucket if start and end date are not available.
+        bucket = ""
+        if not start_date and not end_date:
+            for label in labels:
+                if "bucket" in label:
+                    bucket = label.split(":")[-1].strip()
+                    break
+
+        # Condense assignees into a series of strings.
+        try:
+            assignee = i.assignee.name
+        except AttributeError:
+            assignee = ""
+
+        # Abbreviate the description since we don't need every last word for the road map.
+        description = i.body.split(".")[0]
+        description += ". Read more: %s" % i.html_url
+
+        # item, desc, start, end, bucket, status, feature set, labels, assignee
+        tokens = [
+            i.title,
+            description,
+            start_date,
+            end_date,
+            bucket,
+            status,
+            feature_set,
+            ",".join(labels),
+            assignee,
+        ]
+
+        # Convert the line into CSV. We can't use join because we need to wrap the tokens in quotes.
+        line = ""
+        for t in tokens:
+            line += '"%s",' % t
+
+        line = line[:-1]
+
+        # Add the line to the issues list.
+        issues.append(line)
+
+    print("\n".join(issues))
 
     # item (title)
     # desc (body)

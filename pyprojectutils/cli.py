@@ -95,7 +95,7 @@ We first check to see if the repo is dirty and by default the project cannot be 
 committing the changes.
 
     """
-    __version__ = "0.1.0-d"
+    __version__ = "0.1.2-d"
 
     # Define options and arguments.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
@@ -143,13 +143,18 @@ committing the changes.
     args = parser.parse_args()
     # print args
 
+    # Create the hold directory as needed.
+    if not os.path.exists(PROJECTS_ON_HOLD):
+        print_info("Creating the hold directory: %s" % PROJECTS_ON_HOLD)
+        os.makedirs(PROJECTS_ON_HOLD)
+
     # Load the project and make sure it exists.
     project = autoload_project(args.project_name, path=args.project_home)
     if not project.exists:
         print_error("Project does not exist: %s" % args.project_name, EXIT_INPUT)
 
     # Also make sure the project has SCM enabled.
-    if not project.has_scm:
+    if not project.has_scm and not args.force_it:
         print_error("Project does not have a recognized repo: %s" % project.name, EXIT_OTHER)
 
     # A project of the same name cannot exist in the hold directory.

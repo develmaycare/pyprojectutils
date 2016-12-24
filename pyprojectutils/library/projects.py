@@ -285,6 +285,15 @@ class Project(Config):
 
     @property
     def exists(self):
+        """Indicates whether the project root exists.
+
+        :rtype: bool
+
+        .. note::
+            We've made this a dynamic property because it is possible for the root to be created after the project
+            instance has been created.
+
+        """
         return os.path.exists(self.root)
 
     def get_business(self):
@@ -387,6 +396,10 @@ class Project(Config):
 
         """
         return self.client is not None
+
+    @property
+    def has_scm(self):
+        return self._get_scm() is not None
 
     def initialize(self, display=True):
         """Initialize the project, creating various meta files as needed.
@@ -516,7 +529,7 @@ class Project(Config):
 
         # Get meta data.
         self.org = self._get_org()
-        self.scm = self._get_scm().strip()
+        self.scm = self._get_scm()
         self.version = self._get_version()
 
         # Calculate disk space.
@@ -618,7 +631,12 @@ class Project(Config):
         return os.path.join(self.root, name)
 
     def _get_scm(self):
-        """Determine the SCM in use and get the current state."""
+        """Determine the SCM in use and get the current state.
+
+        :rtype: str | None
+        :returns: Returns the type of SCM in use or ``None`` if no SCM is recognized.
+
+        """
         if self.path_exists(".git"):
             # See http://stackoverflow.com/a/5737794/241720
             cmd = '(cd %s && test -z "$(git status --porcelain)")' % self.root
@@ -630,13 +648,26 @@ class Project(Config):
 
             return "git"
         elif self.path_exists(".hg"):
-            # TODO: Determine if hg repo is dirty.
+            # See http://stackoverflow.com/a/11012582/241720
+            cmd = '(cd %s && hg identify --id | grep --quiet + ; echo $?)' % self.root
+            (status, output) = commands.getstatusoutput(cmd)
+            if status >= 1:
+                self.is_dirty = True
+            else:
+                self.is_dirty = False
+
             return "hg"
-        elif self.path_exists("trunk"):
-            # TODO: Determine if svn repo is dirty.
+        elif self.path_exists(".svn"):
+            cmd = 'test -z "`(cd %s && svn status)`"' % self.root
+            (status, output) = commands.getstatusoutput(cmd)
+            if status >= 1:
+                self.is_dirty = True
+            else:
+                self.is_dirty = False
+
             return "svn"
         else:
-            return "None"
+            return None
 
     def _get_version(self):
         if self.path_exists("VERSION.txt"):

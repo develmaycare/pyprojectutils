@@ -41,6 +41,7 @@ setup(
     test_suite='runtests.runtests',
     entry_points={
       'console_scripts': [
+          'holdproject = pyprojectutils.cli:hold_project_command',
           'bumpversion = pyprojectutils.cli:version_update',
           'initproject = pyprojectutils.cli:project_init',
           'lspackages = pyprojectutils.cli:package_parser',

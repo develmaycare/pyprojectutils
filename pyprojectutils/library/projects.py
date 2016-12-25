@@ -250,28 +250,9 @@ class Project(Config):
         self.tags = list()
         self.title = None
         self.type = "project"
-
         self._requirements = list()
 
-        # Handle version.
-        if self.path_exists("VERSION.txt"):
-            self.version_txt = os.path.join(self.root, "VERSION.txt")
-            self.version = read_file(self.version_txt)
-        else:
-            self.version = "0.1.0-d"
-
-        self.version_py = None
-        locations = (
-            os.path.join(self.root, "version.py"),
-            os.path.join(self.root, name, "version.py"),
-            os.path.join(self.root, "source", "main", "version.py"),
-        )
-        for i in locations:
-            if os.path.exists(i):
-                self.version_py = i
-                break
-
-        # Handle config file.
+        # Handle config file. We have to do this here in order to call super() below.
         config_path = os.path.join(self.root, "project.ini")
         if os.path.exists(config_path):
             self.config_exists = True
@@ -530,7 +511,7 @@ class Project(Config):
         # Get meta data.
         self.org = self._get_org()
         self.scm = self._get_scm()
-        self.version = self._get_version()
+        self._load_version()
 
         # Calculate disk space.
         if include_disk:
@@ -669,15 +650,6 @@ class Project(Config):
         else:
             return None
 
-    def _get_version(self):
-        if self.path_exists("VERSION.txt"):
-            with open(self._get_path("VERSION.txt"), "rb") as f:
-                v = f.read().strip()
-                f.close()
-                return v
-        else:
-            return "0.1.0-d"
-
     def _load_section(self, name, values):
         """Overridden to add business, client, and project section values to the current instance."""
         if name == "buiness":
@@ -691,3 +663,32 @@ class Project(Config):
                 setattr(self, key, values[key])
         else:
             super(Project, self)._load_section(name, values)
+
+    def _load_version(self):
+        """Get project version info.
+
+        :rtype: str
+        :returns: Returns the version string.
+
+        .. note::
+            This method sets the ``version``, ``version_py``, and ``version_txt`` attributes.
+
+        """
+        # Always set version_txt whether it exists or not. This allows it to be created if it does not already exist.
+        self.version_txt = os.path.join(self.root, "VERSION.txt")
+        if os.path.exists(self.version_txt):
+            self.version = read_file(self.version_txt)
+        else:
+            self.version = "0.1.0-d"
+
+        # Set the path to the version.py file.
+        self.version_py = None
+        locations = (
+            os.path.join(self.root, "version.py"),
+            os.path.join(self.root, self.name, "version.py"),
+            os.path.join(self.root, "source", "main", "version.py"),
+        )
+        for i in locations:
+            if os.path.exists(i):
+                self.version_py = i
+                break

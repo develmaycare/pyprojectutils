@@ -15,6 +15,175 @@ from library.releases import Version
 from library.shortcuts import get_input, parse_template, write_file, print_error, print_warning, print_info
 
 
+def bump_version_command():
+    """Increment the version number immediately after checking out a release branch."""
+
+    __author__ = "Shawn Davis <shawn@develmaycare.com>"
+    __date__ = "2016-12-25"
+    __help__ = """
+
+    """
+    __version__ = "0.13.0-d"
+
+    # Define options and arguments.
+    parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
+
+    parser.add_argument(
+        "project_name",
+        help="The name of the project. Typically, the directory name in which the project is stored."
+    )
+
+    parser.add_argument(
+        "-b=",
+        "--build=",
+        dest="build",
+        help="Supply build meta data."
+    )
+
+    parser.add_argument(
+        "-M",
+        "--major",
+        action="store_true",
+        dest="major",
+        help="Increase the major version number when you make changes to the public API that are "
+             "backward-incompatible."
+    )
+
+    parser.add_argument(
+        "-m",
+        "--minor",
+        action="store_true",
+        dest="minor",
+        help="Increase the minor version number when new or updated functionality has been implemented "
+             "that does not change the public API."
+    )
+
+    parser.add_argument(
+        "-n=",
+        "--name=",
+        dest="name",
+        help="Name your release."
+    )
+
+    parser.add_argument(
+        "-p",
+        "--patch",
+        action="store_true",
+        dest="patch",
+        help="Set (or increase) the patch level when backward-compatible bug-fixes have been implemented."
+    )
+
+    parser.add_argument(
+        "-P=",
+        "--path=",
+        default=PROJECT_HOME,
+        dest="path",
+        help="The path to where projects are stored. Defaults to %s" % PROJECT_HOME
+    )
+
+    parser.add_argument(
+        "--preview",
+        action="store_true",
+        dest="preview_only",
+        help="Preview the output, but don't make any changes."
+    )
+
+    parser.add_argument(
+        "-s=",
+        "--status=",
+        dest="status",
+        help="Use the status to denote a pre-release version."
+    )
+
+    parser.add_argument(
+        "-T=",
+        "--template=",
+        dest="template",
+        help="Path to the version.py template you would like to use. Use ? to see the default."
+    )
+
+    # Access to the version number requires special consideration, especially
+    # when using sub parsers. The Python 3.3 behavior is different. See this
+    # answer: http://stackoverflow.com/questions/8521612/argparse-optional-subparser-for-version
+    # parser.add_argument('--version', action='version', version='%(prog)s 2.0')
+    parser.add_argument(
+        "-v",
+        action="version",
+        help="Show version number and exit.",
+        version=__version__
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        help="Show verbose version information and exit.",
+        version="%(prog)s" + " %s %s by %s" % (__version__, __date__, __author__)
+    )
+
+    # This will display help or input errors as needed.
+    args = parser.parse_args()
+    # print args
+
+    # Display the default version.py template.
+    if args.template == "?":
+        print(Version.get_template())
+        sys.exit(EXIT_OK)
+
+    # Get the project. Make sure it exists.
+    project = Project(args.project_name, args.path)
+    if not project.exists:
+        print("Project does not exist: %s" % project.name)
+        sys.exit(EXIT_INPUT)
+
+    # Load the project.
+    project.load()
+
+    # Initialize version instance.
+    version = Version(project.version)
+
+    # Update the version or (by default) display the current version.
+    if args.major:
+        version.bump(major=True, status=args.status, build=args.build)
+    elif args.minor:
+        version.bump(minor=True, status=args.status, build=args.build)
+    elif args.patch:
+        version.bump(patch=True, status=args.status, build=args.build)
+    else:
+        print(version)
+        sys.exit(EXIT_OK)
+
+    # Set the version name.
+    if args.name:
+        version.name = args.name
+
+    # Write the VERSION.txt file.
+    if args.preview_only:
+        print("Write: %s" % project.version_txt)
+        print(version.to_string())
+        print("")
+    else:
+        write_file(project.version_txt, version.to_string())
+
+    # Write the version.py file.
+    if project.version_py:
+        if args.template:
+            content = parse_template(version.get_context(), args.template)
+        else:
+            content = parse_template(version.get_context(), Version.get_template())
+
+        if args.preview_only:
+            print("Write: %s" % project.version_py)
+            print("-" * 80)
+            print(content)
+            print("-" * 80)
+            print("")
+        else:
+            write_file(project.version_py, content)
+
+    # Quit.
+    print(version.to_string())
+    sys.exit(EXIT_OK)
+
+
 def generate_password():
     """Generate a random password."""
 
@@ -884,170 +1053,4 @@ def project_status():
 
     print(project.to_markdown())
 
-    sys.exit(EXIT_OK)
-
-
-def version_update():
-    """Increment the version number immediately after checking out a release branch."""
-
-    __author__ = "Shawn Davis <shawn@develmaycare.com>"
-    __date__ = "2016-12-11"
-    __help__ = """
-
-    """
-    __version__ = "0.12.0-d"
-
-    # Define options and arguments.
-    parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
-
-    parser.add_argument(
-        "project_name",
-        help="The name of the project. Typically, the directory name in which the project is stored."
-    )
-
-    parser.add_argument(
-        "-b=",
-        "--build=",
-        dest="build",
-        help="Supply build meta data."
-    )
-
-    parser.add_argument(
-        "-M",
-        "--major",
-        action="store_true",
-        dest="major",
-        help="Increase the major version number when you make changes to the public API that are "
-             "backward-incompatible."
-    )
-
-    parser.add_argument(
-        "-m",
-        "--minor",
-        action="store_true",
-        dest="minor",
-        help="Increase the minor version number when new or updated functionality has been implemented "
-             "that does not change the public API."
-    )
-
-    parser.add_argument(
-        "-n=",
-        "--name=",
-        dest="name",
-        help="Name your release."
-    )
-
-    parser.add_argument(
-        "-p",
-        "--patch",
-        action="store_true",
-        dest="patch",
-        help="Set (or increase) the patch level when backward-compatible bug-fixes have been implemented."
-    )
-
-    parser.add_argument(
-        "-P=",
-        "--path=",
-        default=PROJECT_HOME,
-        dest="path",
-        help="The path to where projects are stored. Defaults to %s" % PROJECT_HOME
-    )
-
-    parser.add_argument(
-        "--preview",
-        action="store_true",
-        dest="preview_only",
-        help="Preview the output, but don't make any changes."
-    )
-
-    parser.add_argument(
-        "-s=",
-        "--status=",
-        dest="status",
-        help="Use the status to denote a pre-release version."
-    )
-
-    parser.add_argument(
-        "-T=",
-        "--template=",
-        dest="template",
-        help="Path to the version.py template you would like to use. Use ? to see the default."
-    )
-
-    # Access to the version number requires special consideration, especially
-    # when using sub parsers. The Python 3.3 behavior is different. See this
-    # answer: http://stackoverflow.com/questions/8521612/argparse-optional-subparser-for-version
-    # parser.add_argument('--version', action='version', version='%(prog)s 2.0')
-    parser.add_argument(
-        "-v",
-        action="version",
-        help="Show version number and exit.",
-        version=__version__
-    )
-    parser.add_argument(
-        "--version",
-        action="version",
-        help="Show verbose version information and exit.",
-        version="%(prog)s" + " %s %s by %s" % (__version__, __date__, __author__)
-    )
-
-    # This will display help or input errors as needed.
-    args = parser.parse_args()
-    # print args
-
-    # Display the default version.py template.
-    if args.template == "?":
-        print(Version.get_template())
-        sys.exit(EXIT_OK)
-
-    # Get the project. Make sure it exists.
-    project = Project(args.project_name, args.path)
-    if not project.exists:
-        print("Project does not exist: %s" % project.name)
-        sys.exit(EXIT_INPUT)
-
-    # Initialize version instance.
-    version = Version(project.version)
-
-    # Update the version or (by default) display the current version.
-    if args.major:
-        version.bump(major=True, status=args.status, build=args.build)
-    elif args.minor:
-        version.bump(minor=True, status=args.status, build=args.build)
-    elif args.patch:
-        version.bump(patch=True, status=args.status, build=args.build)
-    else:
-        print(version)
-        sys.exit(EXIT_OK)
-
-    # Set the version name.
-    if args.name:
-        version.name = args.name
-
-    # Write the VERSION.txt file.
-    if args.preview_only:
-        print("Write: %s" % project.version_txt)
-        print(version.to_string())
-        print("")
-    else:
-        write_file(project.version_txt, version.to_string())
-
-    # Write the version.py file.
-    if project.version_py:
-        if args.template:
-            content = parse_template(version.get_context(), args.template)
-        else:
-            content = parse_template(version.get_context(), Version.get_template())
-
-        if args.preview_only:
-            print("Write: %s" % project.version_py)
-            print("-" * 80)
-            print(content)
-            print("-" * 80)
-            print("")
-        else:
-            write_file(project.version_py, content)
-
-    # Quit.
-    print(version.to_string())
     sys.exit(EXIT_OK)

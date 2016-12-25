@@ -164,8 +164,8 @@ Initialize a project, creating various common files using intelligent defaults. 
       -v                    Show version number and exit.
       --version             Show verbose version information and exit.
 
-lspackages
-==========
+lsdependencies
+==============
 
 List the packages for a given project.
 

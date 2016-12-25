@@ -5,8 +5,8 @@ import sys
 
 sys.path.insert(0, "../pyprojectutils")
 
-from cli import package_parser
+from cli import list_dependencies_command
 
 if __name__ == '__main__':
     sys.argv[0] = re.sub(r'(-script\.pyw|\.exe)?$', '', sys.argv[0])
-    sys.exit(package_parser())
+    sys.exit(list_dependencies_command())

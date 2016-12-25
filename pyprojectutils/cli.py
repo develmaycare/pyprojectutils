@@ -345,15 +345,15 @@ committing the changes.
     sys.exit(status)
 
 
-def package_parser():
+def list_dependencies_command():
     """List the packages for a given project."""
 
     __author__ = "Shawn Davis <shawn@develmaycare.com>"
-    __date__ = "2016-12-11"
+    __date__ = "2016-12-25"
     __help__ = """
 
     """
-    __version__ = "0.5.2-d"
+    __version__ = "0.6.0-d"
 
     # Define options and arguments.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)

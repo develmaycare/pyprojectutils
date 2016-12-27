@@ -32,7 +32,6 @@ DEVELOPER_NAME = os.environ.get("DEVELOPER_NAME", "Unidentified")
 BUSINESS = "business"
 CLIENT = "client"
 
-
 # Standard stage identifiers.
 EXPERIMENTAL = "experimental"
 PLANNING = "planning"
@@ -68,6 +67,9 @@ EXIT_OTHER = 4
 
 # Location of projects. User home is automatically expanded.
 PROJECT_HOME = os.environ.get("PROJECT_HOME", "~/Work")
+
+# Location of archived projects.
+PROJECT_ARCHIVE = os.environ.get("PROJECT_ARCHIVE", os.path.join(PROJECT_HOME, ".archive"))
 
 # Location of projects on hold.
 PROJECTS_ON_HOLD = os.environ.get("PROJECTS_ON_HOLD", os.path.join(PROJECT_HOME, ".hold"))

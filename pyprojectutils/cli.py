@@ -6,13 +6,114 @@ from datetime import datetime
 import os
 import sys
 from library.constants import BASE_ENVIRONMENT, DEVELOPMENT, ENVIRONMENTS, EXIT_OK, EXIT_INPUT, EXIT_OTHER, EXIT_USAGE,\
-    LICENSE_CHOICES, PROJECT_HOME, PROJECTS_ON_HOLD
+    LICENSE_CHOICES, PROJECT_ARCHIVE, PROJECT_HOME, PROJECTS_ON_HOLD
 from library.exceptions import OutputError
 from library.projects import autoload_project, get_distinct_project_attributes, get_projects, Project
 from library.organizations import BaseOrganization, Business, Client
 from library.passwords import RandomPassword
 from library.releases import Version
 from library.shortcuts import get_input, parse_template, write_file, print_error, print_warning, print_info
+
+
+def archive_project_command():
+    """Place a project in the archive."""
+
+    __author__ = "Shawn Davis <shawn@develmaycare.com>"
+    __date__ = "2016-12-26"
+    __help__ = """
+We first check to see if the repo is dirty and by default the project cannot be placed in the archive without first
+committing the changes.
+
+    """
+    __version__ = "0.1.0-d"
+
+    # Define options and arguments.
+    parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
+
+    # TODO: Implement auto completion for archiveproject command. See #15 and #21.
+
+    parser.add_argument(
+        "project_name",
+        help="The name of the project to archive."
+    )
+
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        dest="force_it",
+        help="Archive the project even if the repo is dirty. Be careful!"
+    )
+
+    parser.add_argument(
+        "-p=",
+        "--path=",
+        default=PROJECT_HOME,
+        dest="project_home",
+        help="Path to where projects are stored. Defaults to %s" % PROJECT_HOME
+    )
+
+    # Access to the version number requires special consideration, especially
+    # when using sub parsers. The Python 3.3 behavior is different. See this
+    # answer: http://stackoverflow.com/questions/8521612/argparse-optional-subparser-for-version
+    # parser.add_argument('--version', action='version', version='%(prog)s 2.0')
+    parser.add_argument(
+        "-v",
+        action="version",
+        help="Show version number and exit.",
+        version=__version__
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        help="Show verbose version information and exit.",
+        version="%(prog)s" + " %s %s by %s" % (__version__, __date__, __author__)
+    )
+
+    # This will display help or input errors as needed.
+    args = parser.parse_args()
+    # print args
+
+    # Create the archive directory as needed.
+    if not os.path.exists(PROJECT_ARCHIVE):
+        print_info("Creating the archive directory: %s" % PROJECT_ARCHIVE)
+        os.makedirs(PROJECT_ARCHIVE)
+
+    # Load the project and make sure it exists.
+    project = autoload_project(args.project_name, path=args.project_home)
+    if not project.exists:
+        print_error("Project does not exist: %s" % args.project_name, EXIT_INPUT)
+
+    # Also make sure the project has SCM enabled.
+    if not project.has_scm and not args.force_it:
+        print_error("Project does not have a recognized repo: %s" % project.name, EXIT_OTHER)
+
+    # A project of the same name cannot exist in the archive directory.
+    try:
+        archive_path = project.get_archive_path()
+    except ValueError, e:
+        print_error(e, EXIT_OTHER)
+
+    # noinspection PyUnboundLocalVariable
+    if os.path.exists(os.path.join(archive_path, args.project_name)):
+        print_error("A project with this name already exists at: %s" % archive_path, EXIT_INPUT)
+
+    # Check the project for dirtiness.
+    if project.is_dirty and not args.force_it:
+        print_warning("Project repo is dirty. Use --force to ignore.")
+        sys.exit(EXIT_OTHER)
+
+    # We may also need to create the archive path.
+    if not os.path.exists(archive_path):
+        print_info("Creating the archive path: %s" % archive_path)
+        os.makedirs(archive_path)
+
+    # Move the project.
+    cmd = "mv %s %s/" % (project.root, archive_path)
+    print_info("Moving %s to %s" % (project.name, archive_path))
+    (status, output) = commands.getstatusoutput(cmd)
+
+    # Exit.
+    sys.exit(status)
 
 
 def bump_version_command():
@@ -182,6 +283,91 @@ def bump_version_command():
     # Quit.
     print(version.to_string())
     sys.exit(EXIT_OK)
+
+
+def enable_project_command():
+    """Move a project from archive or hold to active."""
+
+    __author__ = "Shawn Davis <shawn@develmaycare.com>"
+    __date__ = "2016-12-26"
+    __help__ = """
+We first check to see if the repo is dirty and by default the project cannot be placed on hold without first
+committing the changes.
+
+    """
+    __version__ = "0.1.0-d"
+
+    # Define options and arguments.
+    parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
+
+    # TODO: Implement auto completion for enableproject command. See #15 and #21.
+
+    parser.add_argument(
+        "project_name",
+        help="The name of the project to be enabled."
+    )
+
+    parser.add_argument(
+        "-p=",
+        "--path=",
+        default=PROJECT_HOME,
+        dest="project_home",
+        help="Path to where projects are stored. Defaults to %s" % PROJECT_HOME
+    )
+
+    # Access to the version number requires special consideration, especially
+    # when using sub parsers. The Python 3.3 behavior is different. See this
+    # answer: http://stackoverflow.com/questions/8521612/argparse-optional-subparser-for-version
+    # parser.add_argument('--version', action='version', version='%(prog)s 2.0')
+    parser.add_argument(
+        "-v",
+        action="version",
+        help="Show version number and exit.",
+        version=__version__
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        help="Show verbose version information and exit.",
+        version="%(prog)s" + " %s %s by %s" % (__version__, __date__, __author__)
+    )
+
+    # This will display help or input errors as needed.
+    args = parser.parse_args()
+    # print args
+
+    # Make sure the project isn't already in PROJECT_HOME.
+    to_path = os.path.join(args.project_home, args.project_name)
+    if os.path.exists(to_path):
+        print_warning("Project already exists at %s" % to_path)
+        sys.exit(EXIT_INPUT)
+
+    # See if the project exists in PROJECT_ARCHIVE for clients.
+    archive_path = os.path.join(PROJECT_ARCHIVE, "clients")
+    for client_code in os.listdir(archive_path):
+        from_path = os.path.join(archive_path, client_code, args.project_name)
+        print from_path
+
+    # Make sure the project exists in the archive or on hold.
+    from_path = None
+    for i in [PROJECT_ARCHIVE, PROJECTS_ON_HOLD]:
+        path = os.path.join(i, args.project_name)
+        if os.path.exists(path):
+            from_path = path
+            break
+
+    # We can't do anything if the project does not exist.
+    if not from_path:
+        print_error("Could not find project in %s or %s" % (PROJECT_ARCHIVE, PROJECTS_ON_HOLD), exit_code=EXIT_INPUT)
+
+    # Move the project back to PROJECT_HOME.
+    cmd = "mv %s %s" % (from_path, to_path)
+    print(cmd)
+    sys.exit()
+    (status, output) = commands.getstatusoutput(cmd)
+
+    # Exit.
+    sys.exit(status)
 
 
 def generate_password():

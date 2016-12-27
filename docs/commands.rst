@@ -2,6 +2,9 @@
 Commands
 ********
 
+archiveproject
+==============
+
 bumpversion
 ===========
 

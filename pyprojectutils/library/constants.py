@@ -32,6 +32,12 @@ DEVELOPER_NAME = os.environ.get("DEVELOPER_NAME", "Unidentified")
 BUSINESS = "business"
 CLIENT = "client"
 
+# Documentation may have an author and publisher.
+AUTHOR = "author"
+PUBLISHER = "publisher"
+
+# Documentation is stored in a specific location.
+DOCUMENTATION_HOME = os.environ.get("DOCUMENTATION_HOME", "~/Business/Documentation")
 
 # Standard stage identifiers.
 EXPERIMENTAL = "experimental"

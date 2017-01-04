@@ -152,3 +152,25 @@ class Section(object):
         a.append("")
 
         return "\n".join(a)
+
+    def to_text(self):
+        """Convert the section to plain text.
+
+        :rtype: str
+
+        """
+        a = list()
+        a.append(self._name.title() + ":")
+
+        context = self.get_context()
+        for key, value in context.items():
+            if key == "tags":
+                a.append("Tags: %s" % ",".join(value))
+            else:
+                a.append("%s (%s)" % (key, value))
+
+        if "description" in context:
+            a.append(context.pop("description"))
+            a.append("\n")
+
+        return " ".join(a)

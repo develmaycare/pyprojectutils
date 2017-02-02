@@ -677,7 +677,7 @@ class Project(Config):
         # Always set version_txt whether it exists or not. This allows it to be created if it does not already exist.
         self.version_txt = os.path.join(self.root, "VERSION.txt")
         if os.path.exists(self.version_txt):
-            self.version = read_file(self.version_txt)
+            self.version = read_file(self.version_txt).strip()
         else:
             self.version = "0.1.0-d"
 

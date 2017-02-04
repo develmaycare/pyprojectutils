@@ -8,27 +8,61 @@ bumpversion
 Increment the version number immediately after checking out a release branch.
 
     usage: bumpversion [-h] [-b= BUILD] [-M] [-m] [-n= NAME] [-p] [-P= PATH]
-                       [--preview] [-s= STATUS] [-T= TEMPLATE] [-v] [--version]
-                       project_name
+                      [--preview] [-s= STATUS] [-T= TEMPLATE] [-v] [--version]
+                      [project_name]
+
+    positional arguments:
+      project_name          The name of the project. Typically, the directory name
+                            in which the project is stored.
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -b= BUILD, --build= BUILD
+                            Supply build meta data.
+      -M, --major           Increase the major version number when you make
+                            changes to the public API that are backward-
+                            incompatible.
+      -m, --minor           Increase the minor version number when new or updated
+                            functionality has been implemented that does not
+                            change the public API.
+      -n= NAME, --name= NAME
+                            Name your release.
+      -p, --patch           Increase the patch level when backward-compatible bug-
+                            fixes have been implemented.
+      -P= PATH, --path= PATH
+                            The path to where projects are stored. Defaults to
+                            /Users/shawn/Work
+      --preview             Preview the output, but don't make any changes.
+      -s= STATUS, --status= STATUS
+                            Use the status to denote a pre-release version.
+      -T= TEMPLATE, --template= TEMPLATE
+                            Path to the version.py template you would like to use.
+                            Use ? to see the default.
+      -v                    Show version number and exit.
+      --version             Show verbose version information and exit.
+
+
+.. tip::
+    If you omit the ``project_name`` then ``bumpversion`` will attempt to locate the ``VERSION.txt`` file to
+    automatically determine the current project name based on your current working diretory.
 
 When to Use
 -----------
 
-Generally, you want to increment the version number immediately after checking
-out a release branch. However, you may wish to bump the version any time
-during development, especially during early development where the MINOR
-and PATCH versions are changing frequently.
+Generally, you want to increment the version number immediately after checking out a release branch. However, you may
+wish to bump the version any time during development, especially during early development where the MINOR and PATCH
+versions are changing frequently.
 
 Here is an example workflow:
 
 .. code-block:: bash
 
     # Get the current version and check out the next release.
-    versionbump myproject; # get the current version, example 1.2
+    bumpversion myproject; # get the current version, example 1.2
     git checkout -b release-1.3;
 
     # Bump automatically sets the next minor version with a status of d.
-    versionbump myproject -m -s d;
+    bumpversion myproject -m -s d;
 
     # Commit the bump.
     git commit -am "Version Bump";

@@ -12,25 +12,30 @@ from library.projects import autoload_project, get_distinct_project_attributes, 
 from library.organizations import BaseOrganization, Business, Client
 from library.passwords import RandomPassword
 from library.releases import Version
-from library.shortcuts import get_input, parse_template, write_file, print_error, print_warning, print_info
+from library.shortcuts import find_file, get_input, parse_template, print_error, print_info, print_warning, write_file
 
 
 def bump_version_command():
     """Increment the version number immediately after checking out a release branch."""
 
     __author__ = "Shawn Davis <shawn@develmaycare.com>"
-    __date__ = "2016-12-25"
-    __help__ = """
+    __date__ = "2017-02-04"
+    __help__ = """NOTES
 
+This command is based upon [Semantic Versioning](http://semver.org)
+
+If you omit the ``project_name`` then ``bumpversion`` will attempt to locate the ``VERSION.txt`` file to determine the
+current project name.
     """
-    __version__ = "0.13.0-d"
+    __version__ = "0.14.0-d"
 
     # Define options and arguments.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
 
     parser.add_argument(
         "project_name",
-        help="The name of the project. Typically, the directory name in which the project is stored."
+        help="The name of the project. Typically, the directory name in which the project is stored.",
+        nargs="?"
     )
 
     parser.add_argument(
@@ -70,7 +75,7 @@ def bump_version_command():
         "--patch",
         action="store_true",
         dest="patch",
-        help="Set (or increase) the patch level when backward-compatible bug-fixes have been implemented."
+        help="Increase the patch level when backward-compatible bug-fixes have been implemented."
     )
 
     parser.add_argument(
@@ -128,8 +133,20 @@ def bump_version_command():
         print(Version.get_template())
         sys.exit(EXIT_OK)
 
+    # Attempt to determine auto-locate the project if no project name is given. This allows bumpversion to be used in
+    # the current working directory.
+    if args.project_name:
+        project_name = args.project_name
+    else:
+        version_txt = find_file("VERSION.txt", os.getcwd())
+
+        if version_txt:
+            project_name = os.path.basename(os.path.dirname(version_txt))
+        else:
+            print_error("Could not determine project name based on location of exiting VERSION.txt.", EXIT_INPUT)
+
     # Get the project. Make sure it exists.
-    project = Project(args.project_name, args.path)
+    project = Project(project_name, args.path)
     if not project.exists:
         print("Project does not exist: %s" % project.name)
         sys.exit(EXIT_INPUT)
@@ -148,7 +165,7 @@ def bump_version_command():
     elif args.patch:
         version.bump(patch=True, status=args.status, build=args.build)
     else:
-        print(version)
+        print("%s %s" % (project_name, version))
         sys.exit(EXIT_OK)
 
     # Set the version name.

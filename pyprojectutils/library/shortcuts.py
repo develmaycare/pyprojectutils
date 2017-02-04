@@ -44,6 +44,34 @@ def debug(location, message, line=None):
     print(output)
 
 
+def find_file(name, path):
+    """Find a file relative to a given path.
+
+    :param name: The file name.
+    :type name: str
+
+    :param path: The path to check. The function looks up to two directories above the given path.
+    :type path: str
+
+    :rtype: str || None
+    :returns: The full file path or ``None`` if the file could not be found.
+
+    """
+    # Assemble the possible locations for the file.
+    locations = (
+        os.path.join(path, name),
+        os.path.abspath(os.path.join(path, "../", name)),
+        os.path.abspath(os.path.join(path, "../../", name)),
+    )
+    # print(locations)
+
+    for location in locations:
+        if os.path.exists(location):
+            return location
+
+    return None
+
+
 def get_input(label, choices=None, default=None, required=False):
     """Wraps ``raw_input()`` to add choices, default and required options.
 

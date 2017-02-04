@@ -5,14 +5,15 @@ import commands
 from datetime import datetime
 import os
 import sys
-from library.constants import BASE_ENVIRONMENT, DEVELOPMENT, ENVIRONMENTS, EXIT_OK, EXIT_INPUT, EXIT_OTHER, EXIT_USAGE,\
-    LICENSE_CHOICES, PROJECT_HOME, PROJECTS_ON_HOLD
+from library.constants import BASE_ENVIRONMENT, BITBUCKET_USER, DEVELOPMENT, ENVIRONMENTS, EXIT_OK, EXIT_INPUT, \
+    EXIT_OTHER, EXIT_USAGE, GITHUB_USER, LICENSE_CHOICES, PROJECT_HOME, PROJECTS_ON_HOLD
 from library.exceptions import OutputError
 from library.projects import autoload_project, get_distinct_project_attributes, get_projects, Project
 from library.organizations import BaseOrganization, Business, Client
 from library.passwords import RandomPassword
 from library.releases import Version
-from library.shortcuts import find_file, get_input, parse_template, print_error, print_info, print_warning, write_file
+from library.shortcuts import find_file, get_input, make_dir, parse_template, print_error, print_info, print_warning, read_file, \
+    write_file
 
 
 def bump_version_command():
@@ -198,6 +199,115 @@ current project name.
 
     # Quit.
     print(version.to_string())
+    sys.exit(EXIT_OK)
+
+
+def checkout_project_command():
+    """Check out a project from a source code repository."""
+
+    __author__ = "Shawn Davis <shawn@develmaycare.com>"
+    __date__ = "2017-02-04"
+    __help__ = """NOTES
+Only Git repos are currently supported.
+
+Provider is required the first time you run a checkout on the local machine. Afterward, the information is stored for
+the project.
+
+If ``bitbucket`` or ``github`` is specified, the ``BITBUCKET_USER`` or ``GITHUB_USER`` environment variables will be
+used to assemble the URL.
+
+    """
+    __version__ = "0.1.0-d"
+
+    # Define options and arguments.
+    parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
+
+    parser.add_argument(
+        "project_name",
+        help="The name of the project. Typically, the directory name in which the project is stored.",
+    )
+
+    parser.add_argument(
+        "provider",
+        help="The SCM provider. This may be a base URL or one of bitbucket or github.",
+        nargs="?"
+    )
+
+    parser.add_argument(
+        "-p=",
+        "--path=",
+        default=PROJECT_HOME,
+        dest="project_home",
+        help="Path to where projects are stored. Defaults to %s" % PROJECT_HOME
+    )
+
+    # Access to the version number requires special consideration, especially
+    # when using sub parsers. The Python 3.3 behavior is different. See this
+    # answer: http://stackoverflow.com/questions/8521612/argparse-optional-subparser-for-version
+    # parser.add_argument('--version', action='version', version='%(prog)s 2.0')
+    parser.add_argument(
+        "-v",
+        action="version",
+        help="Show version number and exit.",
+        version=__version__
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        help="Show verbose version information and exit.",
+        version="%(prog)s" + " %s %s by %s" % (__version__, __date__, __author__)
+    )
+
+    # This will display help or input errors as needed.
+    args = parser.parse_args()
+    # print args
+
+    # If the repo has already been discovered we'll use that URL, otherwise use the provider to assemble the URL.
+    # ~/.pyprojectutils/repos/<project_name>.txt
+    path = os.path.join(os.path.expanduser("~/.pyprojectutils"), "repos", args.project_name + ".txt")
+    if os.path.exists(path):
+        url = read_file(path)
+        print_info("Using previously found repo: %s" % url)
+    else:
+
+        if not args.provider:
+            print_warning("Provider is required for the first checkout of: %s" % args.project_name)
+            sys.exit(EXIT_USAGE)
+
+        print_info("Attempting to determine the URL based on project and provider.")
+
+        if args.provider == "bitbucket":
+            if not BITBUCKET_USER:
+                print_warning("BITBUCKET_USER is not defined.", EXIT_OTHER)
+
+            url = "git@bitbucket.org:%s/%s.git" % (BITBUCKET_USER, args.project_name)
+        elif args.provider == "github":
+            if not GITHUB_USER:
+                print_warning("GITHUB_USER is not defined.", EXIT_OTHER)
+
+            url = "git@github.com:%s/%s.git" % (GITHUB_USER, args.project_name)
+        else:
+            url = args.provider
+
+    # Download/clone the repo.
+    cmd = "(cd %s && git clone %s)" % (args.project_home, url)
+    print_info(cmd)
+
+    (status, output) = commands.getstatusoutput(cmd)
+    print(output)
+
+    if status > 0:
+        print_warning("Failed to download/clone the repo. Bummer.", EXIT_OTHER)
+
+    # Save the URL to the repos directory.
+    created = make_dir(os.path.dirname(path))
+    if created:
+        print_info("Created .pyprojectutils/repos directory.")
+
+    print_info("Writing URL to file: %s" % path)
+    write_file(path, url)
+
+    # Quit.
     sys.exit(EXIT_OK)
 
 

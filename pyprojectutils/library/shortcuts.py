@@ -10,7 +10,9 @@ from .exceptions import OutputError
 
 __all__ = (
     "debug",
+    "find_file",
     "get_input",
+    "make_dir",
     "parse_template",
     "print_error",
     "print_info",
@@ -55,6 +57,8 @@ def find_file(name, path):
 
     :rtype: str || None
     :returns: The full file path or ``None`` if the file could not be found.
+
+    .. versionadded:: 0.17.0-d
 
     """
     # Assemble the possible locations for the file.
@@ -130,6 +134,27 @@ def get_input(label, choices=None, default=None, required=False):
     return value
 
 
+def make_dir(path):
+    """Create a directory if it does not already exist.
+
+    :param path: The path to the directory.
+    :type path: str
+
+    :rtype: bool
+    :returns: Returns ``True`` if the directory already exists.
+
+    .. versionadded: 0.18.0-d
+
+    """
+    print path
+
+    if os.path.exists(path):
+        return True
+
+    os.makedirs(path)
+    return False
+
+
 def parse_template(context, template):
     """
 
@@ -168,40 +193,67 @@ def print_error(message, exit_code=None):
         sys.exit(exit_code)
 
 
-def print_info(message):
+def print_info(message, exit_code=None):
     """Print an informational message.
 
     :param message: The message to be displayed.
     :type message: str
 
+    :param exit_code: The exit code, if given, will cause the script to terminate. See ``constants.py``.
+    :type exit_code: int
+
     .. versionadded:: 0.16.0-d
+
+    .. versionchanged:: 0.18.0-d
+        Added ``exit_code`` parameter.
 
     """
     print(blue(message))
 
+    if exit_code:
+        sys.exit(exit_code)
 
-def print_success(message):
+
+def print_success(message, exit_code=None):
     """Print a success message.
 
     :param message: The message to be displayed.
     :type message: str
 
+    :param exit_code: The exit code, if given, will cause the script to terminate. See ``constants.py``.
+    :type exit_code: int
+
     .. versionadded:: 0.16.0-d
+
+    .. versionchanged:: 0.18.0-d
+        Added ``exit_code`` parameter.
 
     """
     print(green(message))
 
+    if exit_code:
+        sys.exit(exit_code)
 
-def print_warning(message):
+
+def print_warning(message, exit_code=None):
     """Print a warning message.
 
     :param message: The message to be displayed.
     :type message: str
 
+    :param exit_code: The exit code, if given, will cause the script to terminate. See ``constants.py``.
+    :type exit_code: int
+
     .. versionadded:: 0.16.0-d
+
+    .. versionchanged:: 0.18.0-d
+        Added ``exit_code`` parameter.
 
     """
     print(yellow(message))
+
+    if exit_code:
+        sys.exit(exit_code)
 
 
 def read_file(path):

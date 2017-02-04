@@ -123,6 +123,37 @@ release.
 
 The version may be shown to Customers or Users.
 
+checkoutproject
+===============
+
+Check out a project from a source code repository.
+
+    usage: checkoutproject.py [-h] [-p= PROJECT_HOME] [-v] [--version]
+                              project_name [provider]
+
+    positional arguments:
+      project_name          The name of the project. Typically, the directory name
+                            in which the project is stored.
+      provider              The SCM provider. This may be a base URL or one of
+                            bitbucket or github.
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -p= PROJECT_HOME, --path= PROJECT_HOME
+                            Path to where projects are stored. Defaults to
+                            /Users/shawn/Work
+      -v                    Show version number and exit.
+      --version             Show verbose version information and exit.
+
+.. note::
+    Only Git repos are currently supported.
+
+Provider is required the first time you run a checkout on the local machine. Afterward, the information is stored for
+the project at ``~/.pyprojectutils/repos/project_name.txt``
+
+If ``bitbucket`` or ``github`` is specified, the ``BITBUCKET_USER`` or ``GITHUB_USER`` environment variables will be
+used to assemble the URL.
+
 holdproject
 ===========
 

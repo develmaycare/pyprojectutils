@@ -653,6 +653,238 @@ def list_dependencies_command():
     sys.exit(EXIT_OK)
 
 
+def list_projects_command():
+    """List projects managed on the local machine."""
+
+    __author__ = "Shawn Davis <shawn@develmaycare.com>"
+    __date__ = "2017-02-04"
+    __help__ = """FILTERING
+
+Use the -f/--filter option to by most project attributes:
+
+- category
+- description (partial, case insensitive)
+- name (partial, case insensitive)
+- org (business/client code)
+- scm
+- tag
+- type
+
+The special --hold option may be used to list only projects that are on hold. See the holdproject command.
+
+"""
+    __version__ = "3.0.0-a"
+
+    # Define options and arguments.
+    parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
+
+    parser.add_argument(
+        "-a",
+        "--all",
+        action="store_true",
+        dest="show_all",
+        help="Show projects even if there is no project.ini file."
+    )
+
+    parser.add_argument(
+        "--branch",
+        action="store_true",
+        dest="show_branch",
+        help="Show the current SCM branch name for each project."
+    )
+
+    parser.add_argument(
+        "--dirty",
+        action="store_true",
+        dest="show_dirty",
+        help="Only show projects with dirty repos."
+    )
+
+    parser.add_argument(
+        "-d",
+        "--disk",
+        action="store_true",
+        dest="include_disk",
+        help="Calculate disk space. Takes longer to run."
+    )
+
+    parser.add_argument(
+        "-f=",
+        "--filter=",
+        action="append",
+        dest="criteria",
+        help="Specify filter in the form of key:value. This may be repeated. Use ? to list available values."
+    )
+
+    parser.add_argument(
+        "--hold",
+        action="store_true",
+        dest="list_on_hold",
+        help="Only list projects that are on hold."
+    )
+
+    parser.add_argument(
+        "-p=",
+        "--path=",
+        default=PROJECT_HOME,
+        dest="project_home",
+        help="Path to where projects are stored. Defaults to %s" % PROJECT_HOME
+    )
+
+    # Access to the version number requires special consideration, especially
+    # when using sub parsers. The Python 3.3 behavior is different. See this
+    # answer: http://stackoverflow.com/questions/8521612/argparse-optional-subparser-for-version
+    # parser.add_argument('--version', action='version', version='%(prog)s 2.0')
+    parser.add_argument(
+        "-v",
+        action="version",
+        help="Show version number and exit.",
+        version=__version__
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        help="Show verbose version information and exit.",
+        version="%(prog)s" + " %s %s by %s" % (__version__, __date__, __author__)
+    )
+
+    # Parse arguments. Help, version, and usage errors are automatically handled.
+    args = parser.parse_args()
+    # print args
+
+    # Get the path to where projects are stored.
+    if args.list_on_hold:
+        project_home = PROJECTS_ON_HOLD
+    else:
+        project_home = args.project_home
+
+    # Capture (and validate) filtering options.
+    criteria = dict()
+    if args.criteria:
+        for c in args.criteria:
+
+            # We need to test for the proper format of the each filter given.
+            try:
+                key, value = c.split(":")
+            except ValueError:
+                print_warning('Filter must be given in "key:value" format: %s' % c)
+                sys.exit(EXIT_INPUT)
+
+            # Handle requests to display available values by which filtering may occur. Otherwise, set criteria.
+            if value == "?":
+                print(key)
+                print("-" * 80)
+
+                d = get_distinct_project_attributes(key, path=project_home)
+                for name, count in d.items():
+                    print("%s (%s)" % (name, count))
+
+                print("")
+
+                sys.exit(EXIT_OK)
+            else:
+                criteria[key] = value
+
+    # Print the report heading.
+    heading = "Projects"
+    if "type" in criteria:
+        heading += " (%s)" % criteria['type']
+
+    print("=" * 130)
+    print(heading)
+    print("=" * 130)
+
+    # Print the column headings.
+    print(
+        "%-30s %-20s %-15s %-5s %-10s %-15s %-10s %-20s"
+        % ("Title", "Category", "Type", "Org", "Version", "Status", "Disk", "SCM")
+    )
+    print("-" * 130)
+
+    # Add criteria not included with the --filter option.
+    if args.show_dirty:
+        criteria['is_dirty'] = True
+
+    # Print the rows.
+    projects = get_projects(
+        project_home,
+        criteria=criteria,
+        include_disk=args.include_disk,
+        show_all=args.show_all
+    )
+
+    if len(projects) == 0:
+        print("")
+        print("No results.")
+        sys.exit(EXIT_OK)
+
+    dirty_count = 0
+    dirty_list = list()
+    error_count = 0
+    for p in projects:
+
+        if len(p.title) > 30:
+            title = p.title[:27] + "..."
+        else:
+            title = p.title
+
+        if p.config_exists:
+            config_exists = ""
+        else:
+            config_exists = "*"
+
+        if p.has_error:
+            config_exists += " (e)"
+            error_count += 1
+        else:
+            pass
+
+        if p.is_dirty:
+            dirty_count += 1
+            dirty_list.append(p.name)
+            scm = "%s+" % p.scm
+        else:
+            scm = str(p.scm)
+
+        if args.show_branch:
+            if p.branch:
+                scm += " (%s)" % p.branch
+            else:
+                scm += " (unknown)"
+
+        print(
+            "%-30s %-20s %-15s %-5s %-10s %-15s %-10s %-20s %-1s"
+            % (title, p.category, p.type, p.org, p.version, p.status, p.disk, scm, config_exists)
+        )
+
+    if len(projects) == 1:
+        label = "result"
+    else:
+        label = "results"
+
+    print("-" * 130)
+    print("")
+    print("%s %s." % (len(projects), label))
+
+    if args.show_all:
+        print("* indicates absence of project.ini file.")
+
+    if error_count >= 1:
+        print("(e) indicates an error parsing the project.ini file. Use the --name switch to find out more.")
+
+    if dirty_count == 1:
+        print("One project with uncommitted changes: %s" % dirty_list[0])
+    elif dirty_count > 1:
+        print("%s projects with uncommitted changes." % dirty_count)
+        for i in dirty_list:
+            print("    cd %s/%s && git st" % (PROJECT_HOME, i))
+    else:
+        print("No projects with uncommitted changes.")
+
+    # Quit.
+    sys.exit(EXIT_OK)
+
+
 def project_init():
     """Initialize a project, creating various common files using intelligent defaults. Or at least *some* defaults."""
 
@@ -967,6 +1199,8 @@ The special --hold option may be used to list only projects that are on hold. Se
         help="Show verbose version information and exit.",
         version="%(prog)s" + " %s %s by %s" % (__version__, __date__, __author__)
     )
+
+    print_warning("This function is no longer used.", EXIT_OTHER)
 
     # Parse arguments. Help, version, and usage errors are automatically handled.
     args = parser.parse_args()

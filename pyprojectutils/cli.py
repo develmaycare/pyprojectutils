@@ -12,8 +12,104 @@ from library.projects import autoload_project, get_distinct_project_attributes, 
 from library.organizations import BaseOrganization, Business, Client
 from library.passwords import RandomPassword
 from library.releases import Version
-from library.shortcuts import find_file, get_input, make_dir, parse_template, print_error, print_info, print_warning, read_file, \
-    write_file
+from library.shortcuts import find_file, get_input, make_dir, parse_template, print_error, print_info, print_warning, \
+    read_file, write_file
+
+
+def archive_project_command():
+    """Place a project in the archive."""
+
+    __author__ = "Shawn Davis <shawn@develmaycare.com>"
+    __date__ = "2017-02-04"
+    __help__ = """
+We first check to see if the repo is dirty and by default the project cannot be placed in the archive without first
+committing the changes.
+
+    """
+    __version__ = "0.2.0-d"
+
+    # Define options and arguments.
+    parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
+
+    # TODO: Implement auto completion for archiveproject command. See #15 and #21.
+
+    parser.add_argument(
+        "project_name",
+        help="The name of the project to archive."
+    )
+
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        dest="force_it",
+        help="Archive the project even if the repo is dirty. Be careful!"
+    )
+
+    parser.add_argument(
+        "-p=",
+        "--path=",
+        default=PROJECT_HOME,
+        dest="project_home",
+        help="Path to where projects are stored. Defaults to %s" % PROJECT_HOME
+    )
+
+    # Access to the version number requires special consideration, especially
+    # when using sub parsers. The Python 3.3 behavior is different. See this
+    # answer: http://stackoverflow.com/questions/8521612/argparse-optional-subparser-for-version
+    # parser.add_argument('--version', action='version', version='%(prog)s 2.0')
+    parser.add_argument(
+        "-v",
+        action="version",
+        help="Show version number and exit.",
+        version=__version__
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        help="Show verbose version information and exit.",
+        version="%(prog)s" + " %s %s by %s" % (__version__, __date__, __author__)
+    )
+
+    # This will display help or input errors as needed.
+    args = parser.parse_args()
+    # print args
+
+    # Create the archive directory as needed.
+    if not os.path.exists(PROJECT_ARCHIVE):
+        print_info("Creating the archive directory: %s" % PROJECT_ARCHIVE)
+        os.makedirs(PROJECT_ARCHIVE)
+
+    # Load the project and make sure it exists.
+    project = autoload_project(args.project_name, path=args.project_home)
+    if not project.exists:
+        print_error("Project does not exist: %s" % args.project_name, EXIT_INPUT)
+
+    # Also make sure the project has SCM enabled.
+    if not project.has_scm and not args.force_it:
+        print_error("Project does not have a recognized repo: %s" % project.name, EXIT_OTHER)
+
+    # A project of the same name cannot exist in the archive directory.
+    archive_path = PROJECT_ARCHIVE
+    if os.path.exists(os.path.join(archive_path, project.name)):
+        print_error("A project with the same name is already in the archive: %s" % args.project_name, EXIT_OTHER)
+
+    # Check the project for dirtiness.
+    if project.is_dirty and not args.force_it:
+        print_warning("Project repo is dirty. Use --force to ignore.")
+        sys.exit(EXIT_OTHER)
+
+    # We may also need to create the archive path.
+    if not os.path.exists(archive_path):
+        print_info("Creating the archive path: %s" % archive_path)
+        os.makedirs(archive_path)
+
+    # Move the project.
+    cmd = "mv %s %s/" % (project.root, archive_path)
+    print_info("Moving %s to %s" % (project.name, archive_path))
+    (status, output) = commands.getstatusoutput(cmd)
+
+    # Exit.
+    sys.exit(status)
 
 
 def bump_version_command():
@@ -144,6 +240,7 @@ current project name.
         if version_txt:
             project_name = os.path.basename(os.path.dirname(version_txt))
         else:
+            project_name = None
             print_error("Could not determine project name based on location of exiting VERSION.txt.", EXIT_INPUT)
 
     # Get the project. Make sure it exists.
@@ -312,7 +409,7 @@ used to assemble the URL.
 
 
 def enable_project_command():
-    """Remove a project from hold or archive."""
+    """Re-enable a project from hold or archive."""
 
     __author__ = "Shawn Davis <shawn@develmaycare.com>"
     __date__ = "2017-02-04"
@@ -362,6 +459,12 @@ committing the changes.
     args = parser.parse_args()
     # print args
 
+    # Make sure the project isn't already in PROJECT_HOME.
+    to_path = os.path.join(args.project_home, args.project_name)
+    if os.path.exists(to_path):
+        print_warning("Project already exists at %s" % to_path)
+        sys.exit(EXIT_INPUT)
+
     # Find the project in archive or old.
     from_path = None
     locations = (
@@ -382,6 +485,7 @@ committing the changes.
     # Move the project.
     cmd = "mv %s %s/" % (from_path, to_path)
     print_info("Moving %s to %s/%s" % (args.project_name, to_path, args.project_name))
+
     (status, output) = commands.getstatusoutput(cmd)
 
     # Exit.
@@ -970,7 +1074,7 @@ Use the -f/--filter option to by most project attributes:
 The special --hold option may be used to list only projects that are on hold. See the holdproject command.
 
 """
-    __version__ = "3.0.0-a"
+    __version__ = "3.1.0-a"
 
     # Define options and arguments.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
@@ -981,6 +1085,13 @@ The special --hold option may be used to list only projects that are on hold. Se
         action="store_true",
         dest="show_all",
         help="Show projects even if there is no project.ini file."
+    )
+
+    parser.add_argument(
+        "--archive",
+        action="store_true",
+        dest="list_archive",
+        help="Only list projects that are staged for archiving."
     )
 
     parser.add_argument(
@@ -1050,7 +1161,9 @@ The special --hold option may be used to list only projects that are on hold. Se
     # print args
 
     # Get the path to where projects are stored.
-    if args.list_on_hold:
+    if args.list_archive:
+        project_home = PROJECT_ARCHIVE
+    elif args.list_on_hold:
         project_home = PROJECTS_ON_HOLD
     else:
         project_home = args.project_home

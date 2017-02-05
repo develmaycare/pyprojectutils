@@ -2,10 +2,39 @@
 Commands
 ********
 
+archiveproject
+==============
+
+Place a project in the archive.
+
+.. code-block:: plain
+
+    usage: archiveproject.py [-h] [--force] [-p= PROJECT_HOME] [-v] [--version]
+                         project_name
+
+    positional arguments:
+      project_name          The name of the project to archive.
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      --force               Archive the project even if the repo is dirty. Be
+                            careful!
+      -p= PROJECT_HOME, --path= PROJECT_HOME
+                            Path to where projects are stored. Defaults to
+                            /Users/shawn/Work
+      -v                    Show version number and exit.
+      --version             Show verbose version information and exit.
+
+    We first check to see if the repo is dirty and by default the project cannot be placed in the archive without first
+    committing the changes.
+
+
 bumpversion
 ===========
 
 Increment the version number immediately after checking out a release branch.
+
+.. code-block:: plain
 
     usage: bumpversion [-h] [-b= BUILD] [-M] [-m] [-n= NAME] [-p] [-P= PATH]
                       [--preview] [-s= STATUS] [-T= TEMPLATE] [-v] [--version]
@@ -128,6 +157,8 @@ checkoutproject
 
 Check out a project from a source code repository.
 
+.. code-block:: plain
+
     usage: checkoutproject.py [-h] [-p= PROJECT_HOME] [-v] [--version]
                               project_name [provider]
 
@@ -154,10 +185,37 @@ the project at ``~/.pyprojectutils/repos/project_name.txt``
 If ``bitbucket`` or ``github`` is specified, the ``BITBUCKET_USER`` or ``GITHUB_USER`` environment variables will be
 used to assemble the URL.
 
+enableproject
+=============
+
+Re-enable a project from hold or archive.
+
+.. code-block:: plain
+
+    usage: enableproject.py [-h] [-p= PROJECT_HOME] [-v] [--version] project_name
+
+    positional arguments:
+      project_name          The name of the project to restore from hold or
+                            archive.
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -p= PROJECT_HOME, --path= PROJECT_HOME
+                            Path to where projects are stored. Defaults to
+                            /Users/shawn/Work
+      -v                    Show version number and exit.
+      --version             Show verbose version information and exit.
+
+    We first check to see if the repo is dirty and by default the project cannot be placed on hold without first
+    committing the changes.
+
+
 holdproject
 ===========
 
 Place a project on hold.
+
+.. code-block:: plain
 
     usage: holdproject.py [-h] [--force] [-p= PROJECT_HOME] [-v] [--version]
                           project_name
@@ -183,6 +241,8 @@ initproject
 ===========
 
 Initialize a project, creating various common files using intelligent defaults. Or at least *some* defaults.
+
+.. code-block:: plain
 
     usage: initproject [-h] [-b= BUSINESS_NAME] [-B= BUSINESS_CODE]
                        [-c= CATEGORY] [--client= CLIENT_NAME]
@@ -233,6 +293,8 @@ lsdependencies
 ==============
 
 List the packages for a given project.
+
+.. code-block:: plain
 
     usage: lspackages [-h]
                       [--env= {base,control,development,testing,staging,live}]
@@ -308,23 +370,25 @@ Several output formats are supported. All are sent to standard out unless a file
 lsprojects
 ==========
 
-Find, parse, and collect project information.
+List projects managed on the local machine.
 
 .. code-block:: plain
 
-    usage: lsprojects [-h] [-a] [--dirty] [-d] [-f= CRITERIA]
-                      [-n= PROJECT_NAME] [-p= PROJECT_HOME] [-v] [--version]
+    usage: lsprojects.py [-h] [-a] [--archive] [--branch] [--dirty] [-d]
+                         [-f= CRITERIA] [--hold] [-p= PROJECT_HOME] [-v]
+                         [--version]
 
     optional arguments:
       -h, --help            show this help message and exit
       -a, --all             Show projects even if there is no project.ini file.
+      --archive             Only list projects that are staged for archiving.
+      --branch              Show the current SCM branch name for each project.
       --dirty               Only show projects with dirty repos.
       -d, --disk            Calculate disk space. Takes longer to run.
       -f= CRITERIA, --filter= CRITERIA
                             Specify filter in the form of key:value. This may be
                             repeated. Use ? to list available values.
-      -n= PROJECT_NAME, --name= PROJECT_NAME
-                            Find a project by name and display it's information.
+      --hold                Only list projects that are on hold.
       -p= PROJECT_HOME, --path= PROJECT_HOME
                             Path to where projects are stored. Defaults to
                             /Users/shawn/Work
@@ -420,6 +484,8 @@ randompw
 ========
 
 Generate a random password.
+
+.. code-block:: plain
 
     usage: randompw [-h] [--format= [{crypt,md5,plain,htpasswd}]] [--strong]
                     [-U] [-v] [--version]

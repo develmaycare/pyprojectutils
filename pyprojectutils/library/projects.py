@@ -4,7 +4,7 @@ from collections import OrderedDict
 import commands
 import os
 from .config import Config, Section
-from .constants import DEVELOPER_CODE, DEVELOPER_NAME, ENVIRONMENTS, PROJECT_HOME
+from .constants import DEVELOPER_CODE, DEVELOPER_NAME, ENVIRONMENTS, PROJECT_ARCHIVE, PROJECT_HOME
 from .organizations import Business, Client
 from .packaging import PackageConfig
 from .shortcuts import parse_template, read_file, write_file, print_info
@@ -277,6 +277,24 @@ class Project(Config):
 
         """
         return os.path.exists(self.root)
+
+    def get_archive_path(self):
+        """Get the path to where this project should be archived.
+
+        :rtype: str
+        :raises: ValueError
+
+        .. note::
+            This path does *no* include the project name.
+
+        """
+        if self.has_client:
+            return os.path.join(PROJECT_ARCHIVE, "clients", self.client.code)
+        elif self.has_business:
+            return os.path.join(PROJECT_ARCHIVE, "business")
+        else:
+            raise ValueError("No business or client defined. It's not possible to derive a path. I can't work under "
+                             "these conditions.")
 
     def get_business(self):
         """Get the project business instance.

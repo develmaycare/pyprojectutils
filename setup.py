@@ -41,6 +41,7 @@ setup(
     test_suite='runtests.runtests',
     entry_points={
       'console_scripts': [
+          'archiveproject = pyprojectutils.cli:archive_project_command',
           'bumpversion = pyprojectutils.cli:bump_version_command',
           'checkoutproject = pyprojectutils.cli:checkout_project_command',
           'enableproject = pyprojectutils.cli:enable_project_command',

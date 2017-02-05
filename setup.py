@@ -42,6 +42,7 @@ setup(
     entry_points={
       'console_scripts': [
           'bumpversion = pyprojectutils.cli:bump_version_command',
+          'checkoutproject = pyprojectutils.cli:checkout_project_command',
           'holdproject = pyprojectutils.cli:hold_project_command',
           'lspackages = pyprojectutils.cli:list_dependencies_command',
           'initproject = pyprojectutils.cli:project_init',

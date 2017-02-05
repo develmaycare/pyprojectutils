@@ -5,33 +5,93 @@ Commands
 archiveproject
 ==============
 
+Place a project in the archive.
+
+.. code-block:: plain
+
+    usage: archiveproject.py [-h] [--force] [-p= PROJECT_HOME] [-v] [--version]
+                         project_name
+
+    positional arguments:
+      project_name          The name of the project to archive.
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      --force               Archive the project even if the repo is dirty. Be
+                            careful!
+      -p= PROJECT_HOME, --path= PROJECT_HOME
+                            Path to where projects are stored. Defaults to
+                            /Users/shawn/Work
+      -v                    Show version number and exit.
+      --version             Show verbose version information and exit.
+
+    We first check to see if the repo is dirty and by default the project cannot be placed in the archive without first
+    committing the changes.
+
+
 bumpversion
 ===========
 
 Increment the version number immediately after checking out a release branch.
 
+.. code-block:: plain
+
     usage: bumpversion [-h] [-b= BUILD] [-M] [-m] [-n= NAME] [-p] [-P= PATH]
-                       [--preview] [-s= STATUS] [-T= TEMPLATE] [-v] [--version]
-                       project_name
+                      [--preview] [-s= STATUS] [-T= TEMPLATE] [-v] [--version]
+                      [project_name]
+
+    positional arguments:
+      project_name          The name of the project. Typically, the directory name
+                            in which the project is stored.
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -b= BUILD, --build= BUILD
+                            Supply build meta data.
+      -M, --major           Increase the major version number when you make
+                            changes to the public API that are backward-
+                            incompatible.
+      -m, --minor           Increase the minor version number when new or updated
+                            functionality has been implemented that does not
+                            change the public API.
+      -n= NAME, --name= NAME
+                            Name your release.
+      -p, --patch           Increase the patch level when backward-compatible bug-
+                            fixes have been implemented.
+      -P= PATH, --path= PATH
+                            The path to where projects are stored. Defaults to
+                            /Users/shawn/Work
+      --preview             Preview the output, but don't make any changes.
+      -s= STATUS, --status= STATUS
+                            Use the status to denote a pre-release version.
+      -T= TEMPLATE, --template= TEMPLATE
+                            Path to the version.py template you would like to use.
+                            Use ? to see the default.
+      -v                    Show version number and exit.
+      --version             Show verbose version information and exit.
+
+
+.. tip::
+    If you omit the ``project_name`` then ``bumpversion`` will attempt to locate the ``VERSION.txt`` file to
+    automatically determine the current project name based on your current working diretory.
 
 When to Use
 -----------
 
-Generally, you want to increment the version number immediately after checking
-out a release branch. However, you may wish to bump the version any time
-during development, especially during early development where the MINOR
-and PATCH versions are changing frequently.
+Generally, you want to increment the version number immediately after checking out a release branch. However, you may
+wish to bump the version any time during development, especially during early development where the MINOR and PATCH
+versions are changing frequently.
 
 Here is an example workflow:
 
 .. code-block:: bash
 
     # Get the current version and check out the next release.
-    versionbump myproject; # get the current version, example 1.2
+    bumpversion myproject; # get the current version, example 1.2
     git checkout -b release-1.3;
 
     # Bump automatically sets the next minor version with a status of d.
-    versionbump myproject -m -s d;
+    bumpversion myproject -m -s d;
 
     # Commit the bump.
     git commit -am "Version Bump";
@@ -92,10 +152,70 @@ release.
 
 The version may be shown to Customers or Users.
 
+checkoutproject
+===============
+
+Check out a project from a source code repository.
+
+.. code-block:: plain
+
+    usage: checkoutproject.py [-h] [-p= PROJECT_HOME] [-v] [--version]
+                              project_name [provider]
+
+    positional arguments:
+      project_name          The name of the project. Typically, the directory name
+                            in which the project is stored.
+      provider              The SCM provider. This may be a base URL or one of
+                            bitbucket or github.
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -p= PROJECT_HOME, --path= PROJECT_HOME
+                            Path to where projects are stored. Defaults to
+                            /Users/shawn/Work
+      -v                    Show version number and exit.
+      --version             Show verbose version information and exit.
+
+.. note::
+    Only Git repos are currently supported.
+
+Provider is required the first time you run a checkout on the local machine. Afterward, the information is stored for
+the project at ``~/.pyprojectutils/repos/project_name.txt``
+
+If ``bitbucket`` or ``github`` is specified, the ``BITBUCKET_USER`` or ``GITHUB_USER`` environment variables will be
+used to assemble the URL.
+
+enableproject
+=============
+
+Re-enable a project from hold or archive.
+
+.. code-block:: plain
+
+    usage: enableproject.py [-h] [-p= PROJECT_HOME] [-v] [--version] project_name
+
+    positional arguments:
+      project_name          The name of the project to restore from hold or
+                            archive.
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -p= PROJECT_HOME, --path= PROJECT_HOME
+                            Path to where projects are stored. Defaults to
+                            /Users/shawn/Work
+      -v                    Show version number and exit.
+      --version             Show verbose version information and exit.
+
+    We first check to see if the repo is dirty and by default the project cannot be placed on hold without first
+    committing the changes.
+
+
 holdproject
 ===========
 
 Place a project on hold.
+
+.. code-block:: plain
 
     usage: holdproject.py [-h] [--force] [-p= PROJECT_HOME] [-v] [--version]
                           project_name
@@ -121,6 +241,8 @@ initproject
 ===========
 
 Initialize a project, creating various common files using intelligent defaults. Or at least *some* defaults.
+
+.. code-block:: plain
 
     usage: initproject [-h] [-b= BUSINESS_NAME] [-B= BUSINESS_CODE]
                        [-c= CATEGORY] [--client= CLIENT_NAME]
@@ -171,6 +293,8 @@ lsdependencies
 ==============
 
 List the packages for a given project.
+
+.. code-block:: plain
 
     usage: lspackages [-h]
                       [--env= {base,control,development,testing,staging,live}]
@@ -246,23 +370,25 @@ Several output formats are supported. All are sent to standard out unless a file
 lsprojects
 ==========
 
-Find, parse, and collect project information.
+List projects managed on the local machine.
 
 .. code-block:: plain
 
-    usage: lsprojects [-h] [-a] [--dirty] [-d] [-f= CRITERIA]
-                      [-n= PROJECT_NAME] [-p= PROJECT_HOME] [-v] [--version]
+    usage: lsprojects.py [-h] [-a] [--archive] [--branch] [--dirty] [-d]
+                         [-f= CRITERIA] [--hold] [-p= PROJECT_HOME] [-v]
+                         [--version]
 
     optional arguments:
       -h, --help            show this help message and exit
       -a, --all             Show projects even if there is no project.ini file.
+      --archive             Only list projects that are staged for archiving.
+      --branch              Show the current SCM branch name for each project.
       --dirty               Only show projects with dirty repos.
       -d, --disk            Calculate disk space. Takes longer to run.
       -f= CRITERIA, --filter= CRITERIA
                             Specify filter in the form of key:value. This may be
                             repeated. Use ? to list available values.
-      -n= PROJECT_NAME, --name= PROJECT_NAME
-                            Find a project by name and display it's information.
+      --hold                Only list projects that are on hold.
       -p= PROJECT_HOME, --path= PROJECT_HOME
                             Path to where projects are stored. Defaults to
                             /Users/shawn/Work
@@ -358,6 +484,8 @@ randompw
 ========
 
 Generate a random password.
+
+.. code-block:: plain
 
     usage: randompw [-h] [--format= [{crypt,md5,plain,htpasswd}]] [--strong]
                     [-U] [-v] [--version]

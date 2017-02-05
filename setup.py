@@ -43,11 +43,12 @@ setup(
       'console_scripts': [
           'archiveproject = pyprojectutils.cli:archive_project_command',
           'bumpversion = pyprojectutils.cli:bump_version_command',
+          'checkoutproject = pyprojectutils.cli:checkout_project_command',
           'enableproject = pyprojectutils.cli:enable_project_command',
           'holdproject = pyprojectutils.cli:hold_project_command',
           'lspackages = pyprojectutils.cli:list_dependencies_command',
           'initproject = pyprojectutils.cli:project_init',
-          'lsprojects = pyprojectutils.cli:project_parser',
+          'lsprojects = pyprojectutils.cli:list_projects_command',
           'randompw = pyprojectutils.cli:generate_password',
           'statproject = pyprojectutils.cli:project_status',
       ],

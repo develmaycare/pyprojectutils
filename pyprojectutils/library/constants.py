@@ -32,6 +32,10 @@ DEVELOPER_NAME = os.environ.get("DEVELOPER_NAME", "Unidentified")
 BUSINESS = "business"
 CLIENT = "client"
 
+# SCM handles.
+BITBUCKET_USER = os.environ.get("BITBUCKET_USER", None)
+GITHUB_USER = os.environ.get("GITHUB_USER", None)
+
 # Standard stage identifiers.
 EXPERIMENTAL = "experimental"
 PLANNING = "planning"

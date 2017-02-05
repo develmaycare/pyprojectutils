@@ -233,6 +233,7 @@ class Project(Config):
         :type path: str
 
         """
+        self.branch = None
         self.business = None
         self.category = None or "uncategorized"
         self.client = None
@@ -637,6 +638,8 @@ class Project(Config):
 
         """
         if self.path_exists(".git"):
+
+            # Determine whether the repo is dirty.
             # See http://stackoverflow.com/a/5737794/241720
             cmd = '(cd %s && test -z "$(git status --porcelain)")' % self.root
             (status, output) = commands.getstatusoutput(cmd)
@@ -645,8 +648,14 @@ class Project(Config):
             else:
                 self.is_dirty = False
 
+            # Get the current branch name.
+            (status, output) = commands.getstatusoutput("(cd %s && git rev-parse --abbrev-ref HEAD)" % self.root)
+            self.branch = output.strip()
+
             return "git"
         elif self.path_exists(".hg"):
+
+            # Determine whether the repo is dirty.
             # See http://stackoverflow.com/a/11012582/241720
             cmd = '(cd %s && hg identify --id | grep --quiet + ; echo $?)' % self.root
             (status, output) = commands.getstatusoutput(cmd)
@@ -654,6 +663,10 @@ class Project(Config):
                 self.is_dirty = True
             else:
                 self.is_dirty = False
+
+            # Get the current branch name.
+            (status, output) = commands.getstatusoutput("hg branch")
+            self.branch = output.strip()
 
             return "hg"
         elif self.path_exists(".svn"):
@@ -663,6 +676,8 @@ class Project(Config):
                 self.is_dirty = True
             else:
                 self.is_dirty = False
+
+            # TODO: Parse output of svn info to get the current branch if possible.
 
             return "svn"
         else:
@@ -695,7 +710,7 @@ class Project(Config):
         # Always set version_txt whether it exists or not. This allows it to be created if it does not already exist.
         self.version_txt = os.path.join(self.root, "VERSION.txt")
         if os.path.exists(self.version_txt):
-            self.version = read_file(self.version_txt)
+            self.version = read_file(self.version_txt).strip()
         else:
             self.version = "0.1.0-d"
 

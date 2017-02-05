@@ -6,7 +6,7 @@ from datetime import datetime
 import os
 import sys
 from library.constants import BASE_ENVIRONMENT, BITBUCKET_USER, DEVELOPMENT, ENVIRONMENTS, EXIT_OK, EXIT_INPUT, \
-    EXIT_OTHER, EXIT_USAGE, GITHUB_USER, LICENSE_CHOICES, PROJECT_HOME, PROJECTS_ON_HOLD
+    EXIT_OTHER, EXIT_USAGE, GITHUB_USER, LICENSE_CHOICES, PROJECT_ARCHIVE, PROJECT_HOME, PROJECTS_ON_HOLD
 from library.exceptions import OutputError
 from library.projects import autoload_project, get_distinct_project_attributes, get_projects, Project
 from library.organizations import BaseOrganization, Business, Client
@@ -309,6 +309,83 @@ used to assemble the URL.
 
     # Quit.
     sys.exit(EXIT_OK)
+
+
+def enable_project_command():
+    """Remove a project from hold or archive."""
+
+    __author__ = "Shawn Davis <shawn@develmaycare.com>"
+    __date__ = "2017-02-04"
+    __help__ = """
+We first check to see if the repo is dirty and by default the project cannot be placed on hold without first
+committing the changes.
+
+    """
+    __version__ = "0.1.0-d"
+
+    # Define options and arguments.
+    parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
+
+    # TODO: Implement auto completion for enableproject command. See #15 and #21.
+
+    parser.add_argument(
+        "project_name",
+        help="The name of the project to restore from hold or archive."
+    )
+
+    parser.add_argument(
+        "-p=",
+        "--path=",
+        default=PROJECT_HOME,
+        dest="project_home",
+        help="Path to where projects are stored. Defaults to %s" % PROJECT_HOME
+    )
+
+    # Access to the version number requires special consideration, especially
+    # when using sub parsers. The Python 3.3 behavior is different. See this
+    # answer: http://stackoverflow.com/questions/8521612/argparse-optional-subparser-for-version
+    # parser.add_argument('--version', action='version', version='%(prog)s 2.0')
+    parser.add_argument(
+        "-v",
+        action="version",
+        help="Show version number and exit.",
+        version=__version__
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        help="Show verbose version information and exit.",
+        version="%(prog)s" + " %s %s by %s" % (__version__, __date__, __author__)
+    )
+
+    # This will display help or input errors as needed.
+    args = parser.parse_args()
+    # print args
+
+    # Find the project in archive or old.
+    from_path = None
+    locations = (
+        os.path.join(PROJECT_ARCHIVE, args.project_name),
+        os.path.join(PROJECTS_ON_HOLD, args.project_name),
+    )
+    for location in locations:
+        if os.path.exists(location):
+            from_path = location
+            break
+
+    if not from_path:
+        print_warning("Could not find project in archive or on hold: %s" % args.project_name, EXIT_INPUT)
+
+    # Set the path to where the project will be restored.
+    to_path = args.project_home
+
+    # Move the project.
+    cmd = "mv %s %s/" % (from_path, to_path)
+    print_info("Moving %s to %s/%s" % (args.project_name, to_path, args.project_name))
+    (status, output) = commands.getstatusoutput(cmd)
+
+    # Exit.
+    sys.exit(status)
 
 
 def generate_password():

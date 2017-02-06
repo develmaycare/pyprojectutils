@@ -47,7 +47,7 @@ setup(
           'enableproject = pyprojectutils.cli:enable_project_command',
           'holdproject = pyprojectutils.cli:hold_project_command',
           'lspackages = pyprojectutils.cli:list_dependencies_command',
-          'initproject = pyprojectutils.cli:project_init',
+          'initproject = pyprojectutils.cli:init_project_command',
           'lsprojects = pyprojectutils.cli:list_projects_command',
           'randompw = pyprojectutils.cli:generate_password',
           'statproject = pyprojectutils.cli:project_status',

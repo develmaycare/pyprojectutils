@@ -185,6 +185,16 @@ the project at ``~/.pyprojectutils/repos/project_name.txt``
 If ``bitbucket`` or ``github`` is specified, the ``BITBUCKET_USER`` or ``GITHUB_USER`` environment variables will be
 used to assemble the URL.
 
+You may also specify the ``DEFAULT_SCM`` environment variable to automatically use Bitbucket or GitHub. For example:
+
+.. code-block:: bash
+
+    export BITBUCKET_USER="develmaycare";
+    export GITHUB_USER="develmaycare";
+    export DEFAULT_SCM="github";
+
+The ``DEFAULT_SCM`` itself defaults to GITHUB_USER.
+
 enableproject
 =============
 

@@ -5,8 +5,8 @@ import commands
 from datetime import datetime
 import os
 import sys
-from library.constants import BASE_ENVIRONMENT, BITBUCKET_USER, DEVELOPMENT, ENVIRONMENTS, EXIT_OK, EXIT_INPUT, \
-    EXIT_OTHER, EXIT_USAGE, GITHUB_USER, LICENSE_CHOICES, PROJECT_ARCHIVE, PROJECT_HOME, PROJECTS_ON_HOLD
+from library.constants import BASE_ENVIRONMENT, BITBUCKET_USER, DEFAULT_SCM, DEVELOPMENT, ENVIRONMENTS, EXIT_OK, \
+    EXIT_INPUT, EXIT_OTHER, EXIT_USAGE, GITHUB_USER, LICENSE_CHOICES, PROJECT_ARCHIVE, PROJECT_HOME, PROJECTS_ON_HOLD
 from library.exceptions import OutputError
 from library.projects import autoload_project, get_distinct_project_attributes, get_projects, Project
 from library.organizations import BaseOrganization, Business, Client
@@ -305,6 +305,7 @@ def checkout_project_command():
     __author__ = "Shawn Davis <shawn@develmaycare.com>"
     __date__ = "2017-02-04"
     __help__ = """NOTES
+
 Only Git repos are currently supported.
 
 Provider is required the first time you run a checkout on the local machine. Afterward, the information is stored for
@@ -313,8 +314,11 @@ the project.
 If ``bitbucket`` or ``github`` is specified, the ``BITBUCKET_USER`` or ``GITHUB_USER`` environment variables will be
 used to assemble the URL.
 
+You may also specify the ``DEFAULT_SCM`` environment variable to automatically use Bitbucket or GitHub. The
+``DEFAULT_SCM`` itself defaults to GITHUB_USER.
+
     """
-    __version__ = "0.1.0-d"
+    __version__ = "0.2.1-d"
 
     # Define options and arguments.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
@@ -326,7 +330,8 @@ used to assemble the URL.
 
     parser.add_argument(
         "provider",
-        help="The SCM provider. This may be a base URL or one of bitbucket or github.",
+        choices=["bitbucket", "bb", "github", "gh"],
+        help="The SCM provider. The abbreviation and full name are supported as shown.",
         nargs="?"
     )
 
@@ -367,24 +372,26 @@ used to assemble the URL.
         print_info("Using previously found repo: %s" % url)
     else:
 
-        if not args.provider:
+        provider = args.provider or DEFAULT_SCM
+
+        if not provider:
             print_warning("Provider is required for the first checkout of: %s" % args.project_name)
             sys.exit(EXIT_USAGE)
 
         print_info("Attempting to determine the URL based on project and provider.")
 
-        if args.provider == "bitbucket":
+        if provider == "bitbucket":
             if not BITBUCKET_USER:
                 print_warning("BITBUCKET_USER is not defined.", EXIT_OTHER)
 
             url = "git@bitbucket.org:%s/%s.git" % (BITBUCKET_USER, args.project_name)
-        elif args.provider == "github":
+        elif provider == "github":
             if not GITHUB_USER:
                 print_warning("GITHUB_USER is not defined.", EXIT_OTHER)
 
             url = "git@github.com:%s/%s.git" % (GITHUB_USER, args.project_name)
         else:
-            url = args.provider
+            pass
 
     # Download/clone the repo.
     cmd = "(cd %s && git clone %s)" % (args.project_home, url)

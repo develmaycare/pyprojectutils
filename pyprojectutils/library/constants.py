@@ -35,6 +35,7 @@ CLIENT = "client"
 # SCM handles.
 BITBUCKET_USER = os.environ.get("BITBUCKET_USER", None)
 GITHUB_USER = os.environ.get("GITHUB_USER", None)
+DEFAULT_SCM = os.environ.get("DEFAULT_CMS", "github")
 
 # Standard stage identifiers.
 EXPERIMENTAL = "experimental"

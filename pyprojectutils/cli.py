@@ -318,7 +318,7 @@ You may also specify the ``DEFAULT_SCM`` environment variable to automatically u
 ``DEFAULT_SCM`` itself defaults to GITHUB_USER.
 
     """
-    __version__ = "0.2.1-d"
+    __version__ = "0.3.0-d"
 
     # Define options and arguments.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
@@ -341,6 +341,13 @@ You may also specify the ``DEFAULT_SCM`` environment variable to automatically u
         default=PROJECT_HOME,
         dest="project_home",
         help="Path to where projects are stored. Defaults to %s" % PROJECT_HOME
+    )
+
+    parser.add_argument(
+        "-u=",
+        "--user=",
+        dest="user",
+        help="The user name for the provider. Overrides environment variables."
     )
 
     # Access to the version number requires special consideration, especially
@@ -380,16 +387,20 @@ You may also specify the ``DEFAULT_SCM`` environment variable to automatically u
 
         print_info("Attempting to determine the URL based on project and provider.")
 
-        if provider == "bitbucket":
-            if not BITBUCKET_USER:
+        if provider in ("bitbucket", "bb"):
+            user = args.user or BITBUCKET_USER
+
+            if not user:
                 print_warning("BITBUCKET_USER is not defined.", EXIT_OTHER)
 
-            url = "git@bitbucket.org:%s/%s.git" % (BITBUCKET_USER, args.project_name)
-        elif provider == "github":
-            if not GITHUB_USER:
+            url = "git@bitbucket.org:%s/%s.git" % (user, args.project_name)
+        elif provider in ("github", "gh"):
+            user = args.user or GITHUB_USER
+
+            if not user:
                 print_warning("GITHUB_USER is not defined.", EXIT_OTHER)
 
-            url = "git@github.com:%s/%s.git" % (GITHUB_USER, args.project_name)
+            url = "git@github.com:%s/%s.git" % (user, args.project_name)
         else:
             pass
 

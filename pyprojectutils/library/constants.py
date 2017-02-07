@@ -2,8 +2,15 @@ import os
 
 __all__ = (
     "BASE_ENVIRONMENT",
+    "BITBUCKET_SCM",
+    "BITBUCKET_USER",
+    "BUSINESS",
+    "CLIENT",
     "CONTROL_ENVIRONMENT",
+    "DEFAULT_SCM",
     "DEVELOPMENT",
+    "DEVELOPER_CODE",
+    "DEVELOPER_NAME",
     "DEVELOPMENT_ENVIRONMENT",
     "ENVIRONMENTS",
     "EXIT_ENV",
@@ -12,15 +19,19 @@ __all__ = (
     "EXIT_OTHER",
     "EXIT_USAGE",
     "EXPERIMENTAL",
+    "GITHUB_SCM",
+    "GITHUB_USER",
     "LICENSE_CHOICES",
-    "PROJECT_HOME",
-    "PROJECTS_ON_HOLD",
-    "TESTING",
-    "TESTING_ENVIRONMENT",
-    "STAGING",
-    "STAGING_ENVIRONMENT",
     "LIVE",
     "LIVE_ENVIRONMENT",
+    "PROJECT_ARCHIVE",
+    "PROJECT_HOME",
+    "PROJECTS_ON_HOLD",
+    "REPO_META_PATH",
+    "STAGING",
+    "STAGING_ENVIRONMENT",
+    "TESTING",
+    "TESTING_ENVIRONMENT",
 )
 
 # The developer name is the name of an individual or company that creates and manages projects. The code is merely a
@@ -78,6 +89,11 @@ PROJECT_ARCHIVE = os.environ.get("PROJECT_ARCHIVE", os.path.join(PROJECT_HOME, "
 
 # Location of projects on hold.
 PROJECTS_ON_HOLD = os.environ.get("PROJECTS_ON_HOLD", os.path.join(PROJECT_HOME, ".hold"))
+
+# Support for source code repo meta data.
+BITBUCKET_SCM = "bitbucket.org"
+GITHUB_SCM = "github.com"
+REPO_META_PATH = os.environ.get("REPO_META_PATH", os.path.join(PROJECT_HOME, ".repos"))
 
 # License options for the lice command.
 LICENSE_CHOICES = (

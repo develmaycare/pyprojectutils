@@ -1350,18 +1350,13 @@ def list_repos_command():
 
 Use the -f/--filter option to by most project attributes:
 
-- category
-- description (partial, case insensitive)
 - name (partial, case insensitive)
-- org (business/client code)
-- scm
-- tag
-- type
-
-The special --hold option may be used to list only projects that are on hold. See the holdproject command.
-
+- project
+- host (bitbucket, bb, github, gh)
+- type (git, hg, svn)
+- user
 """
-    __version__ = "0.1.1-d"
+    __version__ = "0.1.2-d"
 
     # Define options and arguments.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)

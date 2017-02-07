@@ -490,6 +490,35 @@ projects on hold with the ``holdproject`` command or simply move the project to 
 
 To display projects that are on hold, use the ``--hold`` option if ``lsprojects``.
 
+lsrepos
+=======
+
+List source code repos that have been discovered by the checkoutproject command.
+
+..  code-block:: plain
+
+    usage: lsrepos.py [-h] [-f= CRITERIA] [--hold] [-v] [--version]
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -f= CRITERIA, --filter= CRITERIA
+                            Specify filter in the form of key:value. This may be
+                            repeated. Use ? to list available values.
+      --hold                Only list projects that are on hold.
+      -v                    Show version number and exit.
+      --version             Show verbose version information and exit.
+
+    FILTERING
+
+    Use the -f/--filter option to by most project attributes:
+
+    - name (partial, case insensitive)
+    - project
+    - host (bitbucket, bb, github, gh)
+    - type (git, hg, svn)
+    - user
+
+
 randompw
 ========
 

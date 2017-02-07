@@ -685,7 +685,7 @@ class Project(Config):
 
     def _load_section(self, name, values):
         """Overridden to add business, client, and project section values to the current instance."""
-        if name == "buiness":
+        if name == "business":
             section = Business(values.pop('name'), **values)
             setattr(self, name, section)
         elif name == "client":

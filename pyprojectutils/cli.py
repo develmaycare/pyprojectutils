@@ -5,13 +5,15 @@ import commands
 from datetime import datetime
 import os
 import sys
-from library.constants import BASE_ENVIRONMENT, BITBUCKET_USER, DEFAULT_SCM, DEVELOPMENT, ENVIRONMENTS, EXIT_OK, \
-    EXIT_INPUT, EXIT_OTHER, EXIT_USAGE, GITHUB_USER, LICENSE_CHOICES, PROJECT_ARCHIVE, PROJECT_HOME, PROJECTS_ON_HOLD
+from library.constants import BASE_ENVIRONMENT, BITBUCKET_SCM, BITBUCKET_USER, DEFAULT_SCM, DEVELOPMENT, ENVIRONMENTS, EXIT_OK, \
+    EXIT_INPUT, EXIT_OTHER, EXIT_USAGE, GITHUB_SCM, GITHUB_USER, LICENSE_CHOICES, PROJECT_ARCHIVE, PROJECT_HOME, PROJECTS_ON_HOLD, \
+    REPO_META_PATH
 from library.exceptions import OutputError
 from library.projects import autoload_project, get_distinct_project_attributes, get_projects, Project
 from library.organizations import BaseOrganization, Business, Client
 from library.passwords import RandomPassword
 from library.releases import Version
+from library.repos import Repo
 from library.shortcuts import find_file, get_input, make_dir, parse_template, print_error, print_info, print_warning, \
     read_file, write_file
 
@@ -303,7 +305,7 @@ def checkout_project_command():
     """Check out a project from a source code repository."""
 
     __author__ = "Shawn Davis <shawn@develmaycare.com>"
-    __date__ = "2017-02-04"
+    __date__ = "2017-02-07"
     __help__ = """NOTES
 
 Only Git repos are currently supported.
@@ -318,18 +320,18 @@ You may also specify the ``DEFAULT_SCM`` environment variable to automatically u
 ``DEFAULT_SCM`` itself defaults to GITHUB_USER.
 
     """
-    __version__ = "0.3.0-d"
+    __version__ = "0.5.0-d"
 
     # Define options and arguments.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
 
     parser.add_argument(
-        "project_name",
-        help="The name of the project. Typically, the directory name in which the project is stored.",
+        "repo_name",
+        help="The name of the repo.",
     )
 
     parser.add_argument(
-        "provider",
+        "host",
         choices=["bitbucket", "bb", "github", "gh"],
         help="The SCM provider. The abbreviation and full name are supported as shown.",
         nargs="?"
@@ -341,6 +343,13 @@ You may also specify the ``DEFAULT_SCM`` environment variable to automatically u
         default=PROJECT_HOME,
         dest="project_home",
         help="Path to where projects are stored. Defaults to %s" % PROJECT_HOME
+    )
+
+    parser.add_argument(
+        "--preview",
+        action="store_true",
+        dest="preview_only",
+        help="Preview the actions that will be taken without actually running the commands."
     )
 
     parser.add_argument(
@@ -371,56 +380,75 @@ You may also specify the ``DEFAULT_SCM`` environment variable to automatically u
     args = parser.parse_args()
     # print args
 
+    # Don't do anything if the project directory already exists.
+    locations = (
+        ("project", os.path.join(args.project_home, args.repo_name)),
+        ("on hold", os.path.join(PROJECTS_ON_HOLD, args.repo_name)),
+        ("archive", os.path.join(PROJECT_ARCHIVE, args.repo_name)),
+    )
+    for location_name, location_path in locations:
+        if os.path.exists(location_path):
+            print_warning("Project already exists in the %s directory: %s" % (location_name, location_path), EXIT_OTHER)
+
     # If the repo has already been discovered we'll use that URL, otherwise use the provider to assemble the URL.
-    # ~/.pyprojectutils/repos/<project_name>.txt
-    path = os.path.join(os.path.expanduser("~/.pyprojectutils"), "repos", args.project_name + ".txt")
+    # ~/.pyprojectutils/repos/<repo>.ini
+    path = os.path.join(REPO_META_PATH, args.repo_name + ".ini")
     if os.path.exists(path):
-        url = read_file(path)
-        print_info("Using previously found repo: %s" % url)
+        repo = Repo(args.repo_name, path=path)
+        print_info("Using previously found repo: %s" % path)
     else:
 
-        provider = args.provider or DEFAULT_SCM
+        # Use the given host or the default.
+        host = args.host or DEFAULT_SCM
 
-        if not provider:
-            print_warning("Provider is required for the first checkout of: %s" % args.project_name)
-            sys.exit(EXIT_USAGE)
+        # It's possible that no host was given and no default is available.
+        if not host:
+            print_warning("Provider is required for the first checkout of: %s" % args.repo_name, EXIT_USAGE)
 
-        print_info("Attempting to determine the URL based on project and provider.")
-
-        if provider in ("bitbucket", "bb"):
+        # Qualify the input to save the user time.
+        if host in ("bitbucket", "bb"):
             user = args.user or BITBUCKET_USER
 
             if not user:
                 print_warning("BITBUCKET_USER is not defined.", EXIT_OTHER)
-
-            url = "git@bitbucket.org:%s/%s.git" % (user, args.project_name)
-        elif provider in ("github", "gh"):
+        elif host in ("github", "gh"):
             user = args.user or GITHUB_USER
 
             if not user:
                 print_warning("GITHUB_USER is not defined.", EXIT_OTHER)
-
-            url = "git@github.com:%s/%s.git" % (user, args.project_name)
         else:
             pass
 
+        # Discover the repo.
+        print_info("Attempting to auto-discover the repo based on your input ...")
+        repo = Repo(args.repo_name, host=host, user=args.user)
+
     # Download/clone the repo.
-    cmd = "(cd %s && git clone %s)" % (args.project_home, url)
+    cmd = "(cd %s && %s)" % (args.project_home, repo.get_command())
     print_info(cmd)
 
-    (status, output) = commands.getstatusoutput(cmd)
-    print(output)
+    if args.preview_only:
+        status = 0
+    else:
+        (status, output) = commands.getstatusoutput(cmd)
+        print(output)
 
     if status > 0:
         print_warning("Failed to download/clone the repo. Bummer.", EXIT_OTHER)
 
-    # Save the URL to the repos directory.
-    created = make_dir(os.path.dirname(path))
-    if created:
-        print_info("Created .pyprojectutils/repos directory.")
+    # Save the repo info for later.
+    if args.preview_only:
+        pass
+    else:
+        created = make_dir(REPO_META_PATH)
+        if created:
+            print_info("Created %s directory." % REPO_META_PATH)
 
-    print_info("Writing URL to file: %s" % path)
-    write_file(path, url)
+    print_info("Writing repo meta data to file: %s" % path)
+    if args.preview_only:
+        pass
+    else:
+        repo.write()
 
     # Quit.
     sys.exit(EXIT_OK)
@@ -1308,6 +1336,165 @@ The special --hold option may be used to list only projects that are on hold. Se
             print("    cd %s/%s && git st" % (PROJECT_HOME, i))
     else:
         print("No projects with uncommitted changes.")
+
+    # Quit.
+    sys.exit(EXIT_OK)
+
+
+def list_repos_command():
+    """List source code repos that have been discovered by the checkoutproject command."""
+
+    __author__ = "Shawn Davis <shawn@develmaycare.com>"
+    __date__ = "2017-02-07"
+    __help__ = """FILTERING
+
+Use the -f/--filter option to by most project attributes:
+
+- name (partial, case insensitive)
+- project
+- host (bitbucket, bb, github, gh)
+- type (git, hg, svn)
+- user
+"""
+    __version__ = "0.1.2-d"
+
+    # Define options and arguments.
+    parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
+
+    parser.add_argument(
+        "-f=",
+        "--filter=",
+        action="append",
+        dest="criteria",
+        help="Specify filter in the form of key:value. This may be repeated. Use ? to list available values."
+    )
+
+    parser.add_argument(
+        "--hold",
+        action="store_true",
+        dest="list_on_hold",
+        help="Only list projects that are on hold."
+    )
+
+    # parser.add_argument(
+    #     "-p=",
+    #     "--path=",
+    #     default=PYPROJECTUTILS_CONFIG,
+    #     dest="pyprojectutils_config",
+    #     help="Path to where repo meta data is stored. Defaults to %s" % PYPROJECTUTILS_CONFIG
+    # )
+
+    # Access to the version number requires special consideration, especially
+    # when using sub parsers. The Python 3.3 behavior is different. See this
+    # answer: http://stackoverflow.com/questions/8521612/argparse-optional-subparser-for-version
+    # parser.add_argument('--version', action='version', version='%(prog)s 2.0')
+    parser.add_argument(
+        "-v",
+        action="version",
+        help="Show version number and exit.",
+        version=__version__
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        help="Show verbose version information and exit.",
+        version="%(prog)s" + " %s %s by %s" % (__version__, __date__, __author__)
+    )
+
+    # Parse arguments. Help, version, and usage errors are automatically handled.
+    args = parser.parse_args()
+    # print args
+
+    # TODO: Get the path to where repo meta data is stored.
+    path = REPO_META_PATH
+
+    # Capture (and validate) filtering options.
+    criteria = dict()
+    if args.criteria:
+        for c in args.criteria:
+
+            # We need to test for the proper format of the each filter given.
+            try:
+                key, value = c.split(":")
+            except ValueError:
+                print_warning('Filter must be given in "key:value" format: %s' % c)
+                sys.exit(EXIT_INPUT)
+
+            # TODO: Handle requests to display available values by which filtering may occur. Otherwise, set criteria.
+            # if value == "?":
+            #     print(key)
+            #     print("-" * 80)
+            #
+            #     d = get_distinct_project_attributes(key, path=project_home)
+            #     for name, count in d.items():
+            #         print("%s (%s)" % (name, count))
+            #
+            #     print("")
+            #
+            #     sys.exit(EXIT_OK)
+            # else:
+            #     criteria[key] = value
+            criteria[key] = value
+
+    # Print the report heading.
+    heading = "Repos"
+    if "type" in criteria:
+        heading += " (%s)" % criteria['type']
+
+    print("=" * 130)
+    print(heading)
+    print("=" * 130)
+
+    # Print the column headings.
+    print(
+        "%-30s %-30s %-15s %-15s %-15s %-5s"
+        % ("Name", "Project", "Type", "Host", "User", "")
+    )
+    print("-" * 130)
+
+    # Print the rows.
+    repos = Repo.get_repos(criteria=criteria, path=path)
+
+    if len(repos) == 0:
+        print("")
+        print("No results.")
+        sys.exit(EXIT_OK)
+
+    error_count = 0
+    for r in repos:
+
+        if len(r.name) > 30:
+            name = r.name[:27] + "..."
+        else:
+            name = r.name
+
+        if len(r.project) > 30:
+            project = r.project[:27] + "..."
+        else:
+            project = r.project
+
+        if r.has_error:
+            error = "(e)"
+            error_count += 1
+        else:
+            error = ""
+
+        print(
+            "%-30s %-30s %-15s %-15s %-15s %-5s"
+            % (name, project, r.type, r.host, r.user, error)
+        )
+
+    if len(repos) == 1:
+        label = "result"
+    else:
+        label = "results"
+
+    print("-" * 130)
+    print("")
+    print("%s %s." % (len(repos), label))
+
+    if error_count >= 1:
+        print("(e) indicates an error.")
 
     # Quit.
     sys.exit(EXIT_OK)

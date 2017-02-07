@@ -219,6 +219,56 @@ Re-enable a project from hold or archive.
     We first check to see if the repo is dirty and by default the project cannot be placed on hold without first
     committing the changes.
 
+exportgithub
+============
+
+Export Github milestones and issues.
+
+.. code-block::
+
+    usage: exportgithub.py [-h] [--format= {csv,html,markdown,rst,txt}]
+                           [-L= LABELS] [-v] [--version]
+                           repo_name [output_file]
+
+    positional arguments:
+      repo_name             Name of the repository.
+      output_file           The file (or path) to which data should be exported.
+                            If omitted, the export goes to STDOUT.
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      --format= {csv,html,markdown,rst,txt}
+                            Output format. Defaults to CSV.
+      -L= LABELS, --label= LABELS
+                            Filter for a specific label.
+      -v                    Show version number and exit.
+      --version             Show verbose version information and exit.
+
+Environment Variables
+=====================
+
+``GITHUB_USER`` and ``GITHUB_PASSWORD`` must be set in your console environment.
+
+Issue Status
+============
+
+We look for labels of ``ready``, ``in progress``, ``on hold``, and ``review ``to determine the issue's current position
+in the workflow.
+
+Output Formats
+==============
+
+The default output (CSV) may be further parsed by your own scripts. However, it was created to conform with the
+`Roadmunk`_ application, which is like a Swiss army knife for displaying road map data.
+
+Markdown output uses the format for the ``pipe_tables`` extension of `Pandoc`_. The output is *not* pretty, but should
+parse well using Pandoc.
+
+ReStructuredText output uses the `csv-table`_ directive.
+
+.. _csv-table: http://docutils.sourceforge.net/docs/ref/rst/directives.html#id4
+.. _Pandoc: http://pandoc.org/MANUAL.html#tables
+.. _Roadmunk: http://roadmunk.com
 
 holdproject
 ===========

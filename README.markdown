@@ -27,15 +27,21 @@ Install the requirements:
 	
 ## The Commands
 
-See [the command reference](https://github.com/develmaycare/pyprojectutils/blob/master/docs/commands.rst).
+The commands included in this package are:
 
+- archiveproject
 - bumpversion
 - checkoutproject
+- enableproject
+- exportgithub
 - holdproject
 - initproject
 - lsdependencies
 - lsprojects
+- lsrepos
 - randompw
+
+See [the command reference](https://github.com/develmaycare/pyprojectutils/blob/master/docs/commands.rst).
 
 ## Cookiecutter Templates
 

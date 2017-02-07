@@ -2,6 +2,7 @@ import os
 
 __all__ = (
     "BASE_ENVIRONMENT",
+    "BITBUCKET_ENABLED",
     "BITBUCKET_SCM",
     "BITBUCKET_USER",
     "BUSINESS",
@@ -19,6 +20,8 @@ __all__ = (
     "EXIT_OTHER",
     "EXIT_USAGE",
     "EXPERIMENTAL",
+    "GITHUB_ENABLED",
+    "GITHUB_PASSWORD",
     "GITHUB_SCM",
     "GITHUB_USER",
     "LICENSE_CHOICES",
@@ -42,11 +45,6 @@ DEVELOPER_NAME = os.environ.get("DEVELOPER_NAME", "Unidentified")
 # Organization types help identify who is involved in a project.
 BUSINESS = "business"
 CLIENT = "client"
-
-# SCM handles.
-BITBUCKET_USER = os.environ.get("BITBUCKET_USER", None)
-GITHUB_USER = os.environ.get("GITHUB_USER", None)
-DEFAULT_SCM = os.environ.get("DEFAULT_CMS", "github")
 
 # Standard stage identifiers.
 EXPERIMENTAL = "experimental"
@@ -120,3 +118,24 @@ LICENSE_CHOICES = (
     "wtfpl",
     "zlib",
 )
+
+# Bitbucket integration requires a user name and password.
+BITBUCKET_USER = os.environ.get("BITBUCKET_USER", None)
+BITBUCKET_PASSWORD = os.environ.get("BITBUCKET_PASSWORD", None)
+
+if BITBUCKET_USER and BITBUCKET_USER:
+    BITBUCKET_ENABLED = True
+else:
+    BITBUCKET_ENABLED = False
+
+# GitHub integration is only possible if the user sets a user and password in the local environment.
+GITHUB_USER = os.environ.get("GITHUB_USER", None)
+GITHUB_PASSWORD = os.environ.get("GITHUB_PASSWORD", None)
+
+if GITHUB_USER and GITHUB_PASSWORD:
+    GITHUB_ENABLED = True
+else:
+    GITHUB_ENABLED = False
+
+# The default SCM is the user's preferred provider (host) for repos.
+DEFAULT_SCM = os.environ.get("DEFAULT_SCM", "github")

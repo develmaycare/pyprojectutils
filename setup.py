@@ -45,6 +45,7 @@ setup(
           'bumpversion = pyprojectutils.cli:bump_version_command',
           'checkoutproject = pyprojectutils.cli:checkout_project_command',
           'enableproject = pyprojectutils.cli:enable_project_command',
+          'exportgithub = pyprojectutils.cli:export_github_command',
           'holdproject = pyprojectutils.cli:hold_project_command',
           'lspackages = pyprojectutils.cli:list_dependencies_command',
           'initproject = pyprojectutils.cli:init_project_command',

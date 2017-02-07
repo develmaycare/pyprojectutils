@@ -1,17 +1,23 @@
 # Imports
 
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
+import commands
 from datetime import datetime
+import os
 import sys
 from datetime_machine import DateTime
-from library.constants import BASE_ENVIRONMENT, DEVELOPMENT, ENVIRONMENTS, EXIT_OK, EXIT_INPUT, EXIT_OTHER, EXIT_USAGE,\
-    GITHUB_ENABLED, GITHUB_PASSWORD, GITHUB_USER, LICENSE_CHOICES, PROJECT_HOME
+from library.constants import BASE_ENVIRONMENT, BITBUCKET_USER, DEFAULT_SCM, DEVELOPMENT, ENVIRONMENTS, EXIT_OK, \
+    EXIT_INPUT, EXIT_OTHER, EXIT_USAGE, GITHUB_ENABLED, GITHUB_PASSWORD, GITHUB_USER, LICENSE_CHOICES, \
+    PROJECT_ARCHIVE, PROJECT_HOME, PROJECTS_ON_HOLD, REPO_META_PATH
 from library.exceptions import OutputError
+from library.issues import Issue
 from library.projects import autoload_project, get_distinct_project_attributes, get_projects, Project
 from library.organizations import BaseOrganization, Business, Client
 from library.passwords import RandomPassword
 from library.releases import Version
-from library.shortcuts import get_input, parse_template, write_file, print_error, print_warning
+from library.repos import Repo
+from library.shortcuts import find_file, get_input, make_dir, parse_template, print_error, print_info, print_warning, \
+    read_file, write_file
 
 # Commands
 
@@ -21,11 +27,11 @@ def export_github_command():
 
     # Define meta data.
     __author__ = "Shawn Davis <shawn@develmaycare.com>"
-    __date__ = "2016-12-19"
+    __date__ = "2017-02-07"
     __help__ = """
-We look for labels of ready, in progress, and review to determine the issue's current position in the workflow.
+We look for labels of ready, in progress, on hold, and review to determine the issue's current position in the workflow.
         """
-    __version__ = "0.1.1-d"
+    __version__ = "0.2.0-d"
 
     # Define options and arguments.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
@@ -36,11 +42,25 @@ We look for labels of ready, in progress, and review to determine the issue's cu
     )
 
     parser.add_argument(
+        "output_file",
+        help="The file (or path) to which data should be exported. If omitted, the export goes to STDOUT.",
+        nargs="?"
+    )
+
+    parser.add_argument(
+        "--format=",
+        choices=["csv", "html", "markdown", "rst", "txt"],
+        default="csv",
+        dest="output_format",
+        help="Output format. Defaults to CSV."
+    )
+
+    parser.add_argument(
         "-L=",
         "--label=",
-        default="enhancement",
-        dest="label",
-        help='The label used to identify road map items. Defaults to "enhancement".'
+        action="append",
+        dest="labels",
+        help="Filter for a specific label."
     )
 
     # Access to the version number requires special consideration, especially
@@ -62,14 +82,14 @@ We look for labels of ready, in progress, and review to determine the issue's cu
 
     # There's no need to go on if the user name and password have not been defined.
     if not GITHUB_ENABLED:
-        print_warning("GITHUB_USER and GITHUB_PASSWORD environment variables are required.")
+        print_warning("GITHUB_USER and GITHUB_PASSWORD environment variables are required.", EXIT_OTHER)
         sys.exit()
 
     # We also can't continue if PyGithub is not installed.
     try:
         from github import Github
     except ImportError:
-        print_error("The PyGithub package is required to use this command: pip install pygithub")
+        print_error("The PyGithub package is required to use this command: pip install pygithub", EXIT_OTHER)
 
     # This will display help or input errors as needed.
     args = parser.parse_args()
@@ -84,24 +104,59 @@ We look for labels of ready, in progress, and review to determine the issue's cu
     # Get the repo instance.
     repo = user.get_repo(args.repo_name)
 
+    # Start the output based on output format.
+    issues = list()
+    if args.output_format == "html":
+        issues.append('<table>')
+        issues.append('<thead>')
+        issues.append('<tr>')
+        issues.append('<th>Title</th>')
+        issues.append('<th>Description</th>')
+        issues.append('<th>Start Date</th>')
+        issues.append('<th>End Date</th>')
+        issues.append('<th>Bucket</th>')
+        issues.append('<th>Status</th>')
+        issues.append('<th>Milestone</th>')
+        issues.append('<th>Labels</th>')
+        issues.append('<th>Assigned To</th>')
+        issues.append('</tr>')
+        issues.append('</thead>')
+        issues.append('<tbody>')
+    elif args.output_format == "markdown":
+        issues.append("|Title|Description|Start Date|End Date|Bucket|Status|Milestone|Labels|Assigned To|")
+        issues.append("|-----|-----------|----------|--------|------|------|---------|------|-----------|")
+    elif args.output_format == "rst":
+        issues.append(".. csv-table:: %s issues" % args.repo_name)
+        issues.append("    :header: Title,Description,Start Date,End Date,Bucket,Status,Milestone,Labels,Assigned To")
+        issues.append("")
+    elif args.output_format == "txt":
+        pass
+    else:
+        issues.append("Item,Description,Start Date,End Date,Bucket,Status,Milestone,Labels,Assignee")
+
     # Get the issues in the repo. Assemble the output.
     count = 0
-    issues = list()
-    issues.append("Item,Description,Start Date,End Date,Bucket,Status,Feature Set,Labels,Assignee")
     for i in repo.get_issues():
 
-        # We are only interested in issues that pertain to features.
+        # We re-use the labels below. All we want is the name of each one associated with the issue.
         labels = list()
         for label in i.labels:
-
-            if "bucket" in label.name:
-                continue
-
             labels.append(label.name)
 
-        if args.label not in labels:
-            continue
+        # Filter issues based on the label.
+        label_match = False
+        if args.labels:
 
+            # Flag the issue if we find a match.
+            for label in labels:
+                if label in args.labels:
+                    label_match = True
+
+            # Skip the issue if not match is found.
+            if not label_match:
+                continue
+
+        # Increase the issue count.
         count += 1
 
         # Determine the current workflow of the issue.
@@ -111,15 +166,17 @@ We look for labels of ready, in progress, and review to determine the issue's cu
             status = "In Progress"
         elif "review" in labels:
             status = "Review"
+        elif "on hold" in labels:
+            status = "On Hold"
         else:
             status = "Planning"
 
         # Get the milestone.
         milestone = i.milestone
         if milestone:
-            feature_set = milestone.title
+            milestone_title = milestone.title
         else:
-            feature_set = ""
+            milestone_title = ""
 
         # Get the end date and calculate the start date.
         if milestone and milestone.due_on:
@@ -127,14 +184,14 @@ We look for labels of ready, in progress, and review to determine the issue's cu
             # We start with the due date of the milestone as a point of reference.
             end = DateTime(milestone.due_on)
 
-            # The start date is calculated in reverse from the end date based 1 day per issue.
-            days_ago = -(count * 24)
+            # The start date is 30 days prior to the end date.
+            days_ago = -30
             start = DateTime(milestone.due_on)
-            start.increment(business_days=days_ago)
+            start.increment(days=days_ago)
 
             # Set the end and start datetimes.
-            end_date = end.dt
-            start_date = start.dt
+            end_date = end.dt.strftime("%Y-%m-%d")
+            start_date = start.dt.strftime("%Y-%m-%d")
 
         else:
             end_date = ""
@@ -150,82 +207,584 @@ We look for labels of ready, in progress, and review to determine the issue's cu
 
         # Condense assignees into a series of strings.
         try:
-            assignee = i.assignee.name
+            assignee_name = i.assignee.name or i.assignee.login
         except AttributeError:
-            assignee = ""
+            assignee_name = ""
 
         # Abbreviate the description since we don't need every last word for the road map.
         description = i.body.split(".")[0]
         description += ". Read more: %s" % i.html_url
 
-        # item, desc, start, end, bucket, status, feature set, labels, assignee
-        tokens = [
+        # Create the issue instance.
+        issue = Issue(
             i.title,
-            description,
-            start_date,
-            end_date,
-            bucket,
-            status,
-            feature_set,
-            ",".join(labels),
-            assignee,
-        ]
+            assigned_to=assignee_name,
+            bucket=bucket,
+            description=description,
+            end_date=end_date,
+            labels=labels,
+            milestone=milestone_title,
+            start_date=start_date,
+            status=status
+        )
 
-        # Convert the line into CSV. We can't use join because we need to wrap the tokens in quotes.
-        line = ""
-        for t in tokens:
-            line += '"%s",' % t
-
-        line = line[:-1]
+        # Get the line.
+        if args.output_format == "html":
+            line = issue.to_html()
+        elif args.output_format == "markdown":
+            line = "|" + "|".join(issue.get_tokens()) + "|"
+        elif args.output_format == "rst":
+            line = "    %s" % issue.to_csv()
+        elif args.output_format == "txt":
+            line = "\n".join((issue.title, i.url, ""))
+        else:
+            line = issue.to_csv()
 
         # Add the line to the issues list.
         issues.append(line)
 
-    print("\n".join(issues))
+    # Close the output.
+    if args.output_format == "html":
+        issues.append('</tbody>')
+        issues.append('</table>')
+    elif args.output_format == "markdown":
+        issues.append("")
+    elif args.output_format == "rst":
+        issues.append("")
+    elif args.output_format == "txt":
+        pass
+    else:
+        pass
 
-    # item (title)
-    # desc (body)
-    # start (?)
-    # end (due_on)
-    # bucket
-    # assignees
-    # feature set (milestone.title)
-    #
-    # Milestone
-    # title
-    # description
-    # due_on
-
-    # full_name = develmaycare/repo_name
-    # name = repo_name
-    # repos = user.get_repos()
-    # for r in repos:
-    #     print r.name, r.has_wiki
-
-    # repo = user.get_repo("pyprojectutils")
-    #
-    # milestones = repo.get_milestones(state="open")
-    # for m in milestones:
-    #     print m.title, m.due_on
-    #     print m.description
-    #     print ""
-
-    # print repo.name
-    # print repo.description
-    # feature = repo.get_label("feature")
-    # issues = repo.get_issues(state="open", labels=[feature])
-    # for issue in issues:
-    #     print issue.title
-
-    # Roadmunk
-    # item (title), desc, start, end, bucket
-    # release, objective/category/theme/area, status, completion, owner/assignees
-
-    # Github Issue
-    # title, state, body, labels, comments
+    # Write the output.
+    output = "\n".join(issues)
+    if args.output_file:
+        write_file(args.output_file, output)
+    else:
+        print(output)
 
     # Exit.
     sys.exit(EXIT_OK)
+
+
+def archive_project_command():
+    """Place a project in the archive."""
+
+    __author__ = "Shawn Davis <shawn@develmaycare.com>"
+    __date__ = "2017-02-04"
+    __help__ = """
+We first check to see if the repo is dirty and by default the project cannot be placed in the archive without first
+committing the changes.
+
+    """
+    __version__ = "0.2.0-d"
+
+    # Define options and arguments.
+    parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
+
+    # TODO: Implement auto completion for archiveproject command. See #15 and #21.
+
+    parser.add_argument(
+        "project_name",
+        help="The name of the project to archive."
+    )
+
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        dest="force_it",
+        help="Archive the project even if the repo is dirty. Be careful!"
+    )
+
+    parser.add_argument(
+        "-p=",
+        "--path=",
+        default=PROJECT_HOME,
+        dest="project_home",
+        help="Path to where projects are stored. Defaults to %s" % PROJECT_HOME
+    )
+
+    # Access to the version number requires special consideration, especially
+    # when using sub parsers. The Python 3.3 behavior is different. See this
+    # answer: http://stackoverflow.com/questions/8521612/argparse-optional-subparser-for-version
+    # parser.add_argument('--version', action='version', version='%(prog)s 2.0')
+    parser.add_argument(
+        "-v",
+        action="version",
+        help="Show version number and exit.",
+        version=__version__
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        help="Show verbose version information and exit.",
+        version="%(prog)s" + " %s %s by %s" % (__version__, __date__, __author__)
+    )
+
+    # This will display help or input errors as needed.
+    args = parser.parse_args()
+    # print args
+
+    # Create the archive directory as needed.
+    if not os.path.exists(PROJECT_ARCHIVE):
+        print_info("Creating the archive directory: %s" % PROJECT_ARCHIVE)
+        os.makedirs(PROJECT_ARCHIVE)
+
+    # Load the project and make sure it exists.
+    project = autoload_project(args.project_name, path=args.project_home)
+    if not project.exists:
+        print_error("Project does not exist: %s" % args.project_name, EXIT_INPUT)
+
+    # Also make sure the project has SCM enabled.
+    if not project.has_scm and not args.force_it:
+        print_error("Project does not have a recognized repo: %s" % project.name, EXIT_OTHER)
+
+    # A project of the same name cannot exist in the archive directory.
+    archive_path = PROJECT_ARCHIVE
+    if os.path.exists(os.path.join(archive_path, project.name)):
+        print_error("A project with the same name is already in the archive: %s" % args.project_name, EXIT_OTHER)
+
+    # Check the project for dirtiness.
+    if project.is_dirty and not args.force_it:
+        print_warning("Project repo is dirty. Use --force to ignore.")
+        sys.exit(EXIT_OTHER)
+
+    # We may also need to create the archive path.
+    if not os.path.exists(archive_path):
+        print_info("Creating the archive path: %s" % archive_path)
+        os.makedirs(archive_path)
+
+    # Move the project.
+    cmd = "mv %s %s/" % (project.root, archive_path)
+    print_info("Moving %s to %s" % (project.name, archive_path))
+    (status, output) = commands.getstatusoutput(cmd)
+
+    # Exit.
+    sys.exit(status)
+
+
+def bump_version_command():
+    """Increment the version number immediately after checking out a release branch."""
+
+    __author__ = "Shawn Davis <shawn@develmaycare.com>"
+    __date__ = "2017-02-04"
+    __help__ = """NOTES
+
+This command is based upon [Semantic Versioning](http://semver.org)
+
+If you omit the ``project_name`` then ``bumpversion`` will attempt to locate the ``VERSION.txt`` file to determine the
+current project name.
+    """
+    __version__ = "0.14.0-d"
+
+    # Define options and arguments.
+    parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
+
+    parser.add_argument(
+        "project_name",
+        help="The name of the project. Typically, the directory name in which the project is stored.",
+        nargs="?"
+    )
+
+    parser.add_argument(
+        "-b=",
+        "--build=",
+        dest="build",
+        help="Supply build meta data."
+    )
+
+    parser.add_argument(
+        "-M",
+        "--major",
+        action="store_true",
+        dest="major",
+        help="Increase the major version number when you make changes to the public API that are "
+             "backward-incompatible."
+    )
+
+    parser.add_argument(
+        "-m",
+        "--minor",
+        action="store_true",
+        dest="minor",
+        help="Increase the minor version number when new or updated functionality has been implemented "
+             "that does not change the public API."
+    )
+
+    parser.add_argument(
+        "-n=",
+        "--name=",
+        dest="name",
+        help="Name your release."
+    )
+
+    parser.add_argument(
+        "-p",
+        "--patch",
+        action="store_true",
+        dest="patch",
+        help="Increase the patch level when backward-compatible bug-fixes have been implemented."
+    )
+
+    parser.add_argument(
+        "-P=",
+        "--path=",
+        default=PROJECT_HOME,
+        dest="path",
+        help="The path to where projects are stored. Defaults to %s" % PROJECT_HOME
+    )
+
+    parser.add_argument(
+        "--preview",
+        action="store_true",
+        dest="preview_only",
+        help="Preview the output, but don't make any changes."
+    )
+
+    parser.add_argument(
+        "-s=",
+        "--status=",
+        dest="status",
+        help="Use the status to denote a pre-release version."
+    )
+
+    parser.add_argument(
+        "-T=",
+        "--template=",
+        dest="template",
+        help="Path to the version.py template you would like to use. Use ? to see the default."
+    )
+
+    # Access to the version number requires special consideration, especially
+    # when using sub parsers. The Python 3.3 behavior is different. See this
+    # answer: http://stackoverflow.com/questions/8521612/argparse-optional-subparser-for-version
+    # parser.add_argument('--version', action='version', version='%(prog)s 2.0')
+    parser.add_argument(
+        "-v",
+        action="version",
+        help="Show version number and exit.",
+        version=__version__
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        help="Show verbose version information and exit.",
+        version="%(prog)s" + " %s %s by %s" % (__version__, __date__, __author__)
+    )
+
+    # This will display help or input errors as needed.
+    args = parser.parse_args()
+    # print args
+
+    # Display the default version.py template.
+    if args.template == "?":
+        print(Version.get_template())
+        sys.exit(EXIT_OK)
+
+    # Attempt to determine auto-locate the project if no project name is given. This allows bumpversion to be used in
+    # the current working directory.
+    if args.project_name:
+        project_name = args.project_name
+    else:
+        version_txt = find_file("VERSION.txt", os.getcwd())
+
+        if version_txt:
+            project_name = os.path.basename(os.path.dirname(version_txt))
+        else:
+            project_name = None
+            print_error("Could not determine project name based on location of exiting VERSION.txt.", EXIT_INPUT)
+
+    # Get the project. Make sure it exists.
+    project = Project(project_name, args.path)
+    if not project.exists:
+        print("Project does not exist: %s" % project.name)
+        sys.exit(EXIT_INPUT)
+
+    # Load the project.
+    project.load()
+
+    # Initialize version instance.
+    version = Version(project.version)
+
+    # Update the version or (by default) display the current version.
+    if args.major:
+        version.bump(major=True, status=args.status, build=args.build)
+    elif args.minor:
+        version.bump(minor=True, status=args.status, build=args.build)
+    elif args.patch:
+        version.bump(patch=True, status=args.status, build=args.build)
+    else:
+        print("%s %s" % (project_name, version))
+        sys.exit(EXIT_OK)
+
+    # Set the version name.
+    if args.name:
+        version.name = args.name
+
+    # Write the VERSION.txt file.
+    if args.preview_only:
+        print("Write: %s" % project.version_txt)
+        print(version.to_string())
+        print("")
+    else:
+        write_file(project.version_txt, version.to_string())
+
+    # Write the version.py file.
+    if project.version_py:
+        if args.template:
+            content = parse_template(version.get_context(), args.template)
+        else:
+            content = parse_template(version.get_context(), Version.get_template())
+
+        if args.preview_only:
+            print("Write: %s" % project.version_py)
+            print("-" * 80)
+            print(content)
+            print("-" * 80)
+            print("")
+        else:
+            write_file(project.version_py, content)
+
+    # Quit.
+    print(version.to_string())
+    sys.exit(EXIT_OK)
+
+
+def checkout_project_command():
+    """Check out a project from a source code repository."""
+
+    __author__ = "Shawn Davis <shawn@develmaycare.com>"
+    __date__ = "2017-02-07"
+    __help__ = """NOTES
+
+Only Git repos are currently supported.
+
+Provider is required the first time you run a checkout on the local machine. Afterward, the information is stored for
+the project.
+
+If ``bitbucket`` or ``github`` is specified, the ``BITBUCKET_USER`` or ``GITHUB_USER`` environment variables will be
+used to assemble the URL.
+
+You may also specify the ``DEFAULT_SCM`` environment variable to automatically use Bitbucket or GitHub. The
+``DEFAULT_SCM`` itself defaults to GITHUB_USER.
+
+    """
+    __version__ = "0.5.0-d"
+
+    # Define options and arguments.
+    parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
+
+    parser.add_argument(
+        "repo_name",
+        help="The name of the repo.",
+    )
+
+    parser.add_argument(
+        "host",
+        choices=["bitbucket", "bb", "github", "gh"],
+        help="The SCM provider. The abbreviation and full name are supported as shown.",
+        nargs="?"
+    )
+
+    parser.add_argument(
+        "-p=",
+        "--path=",
+        default=PROJECT_HOME,
+        dest="project_home",
+        help="Path to where projects are stored. Defaults to %s" % PROJECT_HOME
+    )
+
+    parser.add_argument(
+        "--preview",
+        action="store_true",
+        dest="preview_only",
+        help="Preview the actions that will be taken without actually running the commands."
+    )
+
+    parser.add_argument(
+        "-u=",
+        "--user=",
+        dest="user",
+        help="The user name for the provider. Overrides environment variables."
+    )
+
+    # Access to the version number requires special consideration, especially
+    # when using sub parsers. The Python 3.3 behavior is different. See this
+    # answer: http://stackoverflow.com/questions/8521612/argparse-optional-subparser-for-version
+    # parser.add_argument('--version', action='version', version='%(prog)s 2.0')
+    parser.add_argument(
+        "-v",
+        action="version",
+        help="Show version number and exit.",
+        version=__version__
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        help="Show verbose version information and exit.",
+        version="%(prog)s" + " %s %s by %s" % (__version__, __date__, __author__)
+    )
+
+    # This will display help or input errors as needed.
+    args = parser.parse_args()
+    # print args
+
+    # Don't do anything if the project directory already exists.
+    locations = (
+        ("project", os.path.join(args.project_home, args.repo_name)),
+        ("on hold", os.path.join(PROJECTS_ON_HOLD, args.repo_name)),
+        ("archive", os.path.join(PROJECT_ARCHIVE, args.repo_name)),
+    )
+    for location_name, location_path in locations:
+        if os.path.exists(location_path):
+            print_warning("Project already exists in the %s directory: %s" % (location_name, location_path), EXIT_OTHER)
+
+    # If the repo has already been discovered we'll use that URL, otherwise use the provider to assemble the URL.
+    # ~/.pyprojectutils/repos/<repo>.ini
+    path = os.path.join(REPO_META_PATH, args.repo_name + ".ini")
+    if os.path.exists(path):
+        repo = Repo(args.repo_name, path=path)
+        print_info("Using previously found repo: %s" % path)
+    else:
+
+        # Use the given host or the default.
+        host = args.host or DEFAULT_SCM
+
+        # It's possible that no host was given and no default is available.
+        if not host:
+            print_warning("Provider is required for the first checkout of: %s" % args.repo_name, EXIT_USAGE)
+
+        # Qualify the input to save the user time.
+        if host in ("bitbucket", "bb"):
+            user = args.user or BITBUCKET_USER
+
+            if not user:
+                print_warning("BITBUCKET_USER is not defined.", EXIT_OTHER)
+        elif host in ("github", "gh"):
+            user = args.user or GITHUB_USER
+
+            if not user:
+                print_warning("GITHUB_USER is not defined.", EXIT_OTHER)
+        else:
+            pass
+
+        # Discover the repo.
+        print_info("Attempting to auto-discover the repo based on your input ...")
+        repo = Repo(args.repo_name, host=host, user=args.user)
+
+    # Download/clone the repo.
+    cmd = "(cd %s && %s)" % (args.project_home, repo.get_command())
+    print_info(cmd)
+
+    if args.preview_only:
+        status = 0
+    else:
+        (status, output) = commands.getstatusoutput(cmd)
+        print(output)
+
+    if status > 0:
+        print_warning("Failed to download/clone the repo. Bummer.", EXIT_OTHER)
+
+    # Save the repo info for later.
+    if args.preview_only:
+        pass
+    else:
+        created = make_dir(REPO_META_PATH)
+        if created:
+            print_info("Created %s directory." % REPO_META_PATH)
+
+    print_info("Writing repo meta data to file: %s" % path)
+    if args.preview_only:
+        pass
+    else:
+        repo.write()
+
+    # Quit.
+    sys.exit(EXIT_OK)
+
+
+def enable_project_command():
+    """Re-enable a project from hold or archive."""
+
+    __author__ = "Shawn Davis <shawn@develmaycare.com>"
+    __date__ = "2017-02-04"
+    __help__ = """
+We first check to see if the repo is dirty and by default the project cannot be placed on hold without first
+committing the changes.
+
+    """
+    __version__ = "0.1.0-d"
+
+    # Define options and arguments.
+    parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
+
+    # TODO: Implement auto completion for enableproject command. See #15 and #21.
+
+    parser.add_argument(
+        "project_name",
+        help="The name of the project to restore from hold or archive."
+    )
+
+    parser.add_argument(
+        "-p=",
+        "--path=",
+        default=PROJECT_HOME,
+        dest="project_home",
+        help="Path to where projects are stored. Defaults to %s" % PROJECT_HOME
+    )
+
+    # Access to the version number requires special consideration, especially
+    # when using sub parsers. The Python 3.3 behavior is different. See this
+    # answer: http://stackoverflow.com/questions/8521612/argparse-optional-subparser-for-version
+    # parser.add_argument('--version', action='version', version='%(prog)s 2.0')
+    parser.add_argument(
+        "-v",
+        action="version",
+        help="Show version number and exit.",
+        version=__version__
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        help="Show verbose version information and exit.",
+        version="%(prog)s" + " %s %s by %s" % (__version__, __date__, __author__)
+    )
+
+    # This will display help or input errors as needed.
+    args = parser.parse_args()
+    # print args
+
+    # Make sure the project isn't already in PROJECT_HOME.
+    to_path = os.path.join(args.project_home, args.project_name)
+    if os.path.exists(to_path):
+        print_warning("Project already exists at %s" % to_path)
+        sys.exit(EXIT_INPUT)
+
+    # Find the project in archive or old.
+    from_path = None
+    locations = (
+        os.path.join(PROJECT_ARCHIVE, args.project_name),
+        os.path.join(PROJECTS_ON_HOLD, args.project_name),
+    )
+    for location in locations:
+        if os.path.exists(location):
+            from_path = location
+            break
+
+    if not from_path:
+        print_warning("Could not find project in archive or on hold: %s" % args.project_name, EXIT_INPUT)
+
+    # Set the path to where the project will be restored.
+    to_path = args.project_home
+
+    # Move the project.
+    cmd = "mv %s %s/" % (from_path, to_path)
+    print_info("Moving %s to %s/%s" % (args.project_name, to_path, args.project_name))
+
+    (status, output) = commands.getstatusoutput(cmd)
+
+    # Exit.
+    sys.exit(status)
 
 
 def generate_password():
@@ -298,15 +857,326 @@ that. Install pyprojectutils during deployment to create passwords on the fly.
     sys.exit(EXIT_OK)
 
 
-def package_parser():
+def hold_project_command():
+    """Place a project on hold."""
+
+    __author__ = "Shawn Davis <shawn@develmaycare.com>"
+    __date__ = "2016-12-24"
+    __help__ = """
+We first check to see if the repo is dirty and by default the project cannot be placed on hold without first
+committing the changes.
+
+    """
+    __version__ = "0.1.2-d"
+
+    # Define options and arguments.
+    parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
+
+    # TODO: Implement auto completion for holdproject command. See #15 and #21.
+
+    parser.add_argument(
+        "project_name",
+        help="The name of the project to place on hold."
+    )
+
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        dest="force_it",
+        help="Hold the project even if the repo is dirty."
+    )
+
+    parser.add_argument(
+        "-p=",
+        "--path=",
+        default=PROJECT_HOME,
+        dest="project_home",
+        help="Path to where projects are stored. Defaults to %s" % PROJECT_HOME
+    )
+
+    # Access to the version number requires special consideration, especially
+    # when using sub parsers. The Python 3.3 behavior is different. See this
+    # answer: http://stackoverflow.com/questions/8521612/argparse-optional-subparser-for-version
+    # parser.add_argument('--version', action='version', version='%(prog)s 2.0')
+    parser.add_argument(
+        "-v",
+        action="version",
+        help="Show version number and exit.",
+        version=__version__
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        help="Show verbose version information and exit.",
+        version="%(prog)s" + " %s %s by %s" % (__version__, __date__, __author__)
+    )
+
+    # This will display help or input errors as needed.
+    args = parser.parse_args()
+    # print args
+
+    # Create the hold directory as needed.
+    if not os.path.exists(PROJECTS_ON_HOLD):
+        print_info("Creating the hold directory: %s" % PROJECTS_ON_HOLD)
+        os.makedirs(PROJECTS_ON_HOLD)
+
+    # Load the project and make sure it exists.
+    project = autoload_project(args.project_name, path=args.project_home)
+    if not project.exists:
+        print_error("Project does not exist: %s" % args.project_name, EXIT_INPUT)
+
+    # Also make sure the project has SCM enabled.
+    if not project.has_scm and not args.force_it:
+        print_error("Project does not have a recognized repo: %s" % project.name, EXIT_OTHER)
+
+    # A project of the same name cannot exist in the hold directory.
+    hold_path = os.path.join(PROJECTS_ON_HOLD, project.name)
+    if os.path.exists(hold_path):
+        print_error("A project with this name already exists at: %s" % hold_path, EXIT_INPUT)
+
+    # Check the project for dirtiness.
+    if project.is_dirty and not args.force_it:
+        print_warning("Project repo is dirty. Use --force to ignore.")
+        sys.exit(EXIT_OTHER)
+
+    # Move the project.
+    cmd = "mv %s %s/" % (project.root, PROJECTS_ON_HOLD)
+    print_info("Moving %s to %s/%s" % (project.name, PROJECTS_ON_HOLD, project.name))
+    (status, output) = commands.getstatusoutput(cmd)
+
+    # Exit.
+    sys.exit(status)
+
+
+def init_project_command():
+    """Initialize a project, creating various common files using intelligent defaults. Or at least *some* defaults."""
+
+    # Define command meta data.
+    __author__ = "Shawn Davis <shawn@develmaycare.com>"
+    __date__ = "2017-02-04"
+    __help__ = """"""
+    __version__ = "0.1.3-d"
+
+    # Initialize the argument parser.
+    parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
+
+    parser.add_argument(
+        "project_name",
+        help="The name of the project. The directory will be created if it does not exist in $PROJECT_HOME",
+    )
+
+    parser.add_argument(
+        "--business=",
+        dest="business_name",
+        help="Set the name of the developer organization."
+    )
+
+    parser.add_argument(
+        "-B=",
+        dest="business_code",
+        help="Business code. If omitted it is automatically dervied from the business name."
+    )
+
+    parser.add_argument(
+        "-c=",
+        "--category=",
+        dest="category",
+        help='Project category. For example, django or wagtail. Default is "uncategorized".'
+    )
+
+    parser.add_argument(
+        "--client=",
+        dest="client_name",
+        help="Set the name of the client organization."
+    )
+
+    parser.add_argument(
+        "-C=",
+        dest="client_code",
+        help="Client code. If omitted it is automatically derived from the client name."
+    )
+
+    parser.add_argument(
+        "-d=",
+        "--description=",
+        dest="description",
+        help="A brief description of the project."
+    )
+
+    parser.add_argument(
+        "-L=",
+        "--license=",
+        dest="license_code",
+        help="License code. Use lice --help for list of valid codes."
+    )
+
+    parser.add_argument(
+        "-p=",
+        "--path=",
+        default=PROJECT_HOME,
+        dest="project_home",
+        help="Path to where projects are stored. Defaults to %s" % PROJECT_HOME
+    )
+
+    parser.add_argument(
+        "--prompt",
+        action="store_true",
+        dest="prompt",
+        help="Prompt for options rather than providing them via the command line."
+    )
+
+    parser.add_argument(
+        "-s=",
+        "--status=",
+        dest="status",
+        help="Filter by project status. Use ? to list available statuses."
+    )
+
+    parser.add_argument(
+        "--title=",
+        dest="title",
+        help="Specify the project title. Defaults to the project name."
+    )
+
+    parser.add_argument(
+        "-t=",
+        "--type=",
+        dest="project_type",
+        help='Specify the project type. Defaults to "project".'
+    )
+
+    # Access to the version number requires special consideration, especially
+    # when using sub parsers. The Python 3.3 behavior is different. See this
+    # answer: http://stackoverflow.com/questions/8521612/argparse-optional-subparser-for-version
+    # parser.add_argument('--version', action='version', version='%(prog)s 2.0')
+    parser.add_argument(
+        "-v",
+        action="version",
+        help="Show version number and exit.",
+        version=__version__
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        help="Show verbose version information and exit.",
+        version="%(prog)s" + " %s %s by %s" % (__version__, __date__, __author__)
+    )
+
+    # Parse arguments. Help, version, and usage errors are automatically handled.
+    args = parser.parse_args()
+
+    # Get additional options if prompted.
+    if args.prompt:
+
+        if args.title:
+            title = args.title
+        else:
+            title = get_input("Title", default=args.project_name)
+
+        if args.description:
+            description = args.description
+        else:
+            description = get_input("Description")
+
+        if args.category:
+            category = args.category
+        else:
+            category = get_input("Category")
+
+        if args.project_type:
+            project_type = args.project_type
+        else:
+            project_type = get_input("Type", default="project")
+
+        is_client_project = get_input("Is this project for a client?", choices=["y", "n"])
+        if is_client_project == "y":
+
+            if args.client_name:
+                client_name = args.client_name
+            else:
+                client_name = get_input("Client Name", required=True)
+
+            if args.client_name:
+                client_code = args.client_code
+            else:
+                default_client_code = BaseOrganization.get_default_code(client_name)
+                client_code = get_input("Client Code", default=default_client_code)
+        else:
+            client_code = None
+            client_name = None
+
+        if args.business_name:
+            business_name = args.business_name
+        else:
+            business_name = get_input("Business/Developer Name", required=True)
+
+        if args.business_code:
+            business_code = args.business_code
+        else:
+            default_business_code = BaseOrganization.get_default_code(business_name)
+            business_code = get_input("Business/Developer Code", default=default_business_code)
+
+        if args.status:
+            status = args.status
+        else:
+            status = get_input("Status", default=DEVELOPMENT)
+
+        if args.license_code:
+            license_code = args.license_code
+        else:
+            license_code = get_input("License", choices=LICENSE_CHOICES, default="bsd3")
+    else:
+        business_code = args.business_code
+        business_name = args.business_name
+        category = args.category or "uncategorized"
+        client_code = args.client_code
+        client_name = args.client_name
+        description = args.description
+        license_code = args.license_code or "bsd3"
+        project_type = args.project_type or "project"
+        status = args.status or DEVELOPMENT
+        title = args.title or args.project_name
+
+    # Create instances for business and client.
+    if business_name:
+        business = Business(business_name, code=business_code)
+    else:
+        business = None
+
+    if client_name:
+        client = Client(client_name, code=client_code)
+    else:
+        client = None
+
+    # Create a project instance.
+    project = Project(args.project_name, path=args.project_home)
+
+    # Set project values from input.
+    project.business = business
+    project.category = category
+    project.client = client
+    project.description = description
+    project.license = license_code
+    project.type = project_type
+    project.status = status
+    project.title = title
+
+    # Initialize the project.
+    if project.initialize():
+        sys.exit(EXIT_OK)
+    else:
+        print_error(project.get_error(), exit_code=EXIT_OTHER)
+
+
+def list_dependencies_command():
     """List the packages for a given project."""
 
     __author__ = "Shawn Davis <shawn@develmaycare.com>"
-    __date__ = "2016-12-11"
+    __date__ = "2016-12-25"
     __help__ = """
 
     """
-    __version__ = "0.5.2-d"
+    __version__ = "0.6.0-d"
 
     # Define options and arguments.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
@@ -479,66 +1349,81 @@ def package_parser():
     sys.exit(EXIT_OK)
 
 
-def project_init():
-    """Initialize a project, creating various common files using intelligent defaults. Or at least *some* defaults."""
+def list_projects_command():
+    """List projects managed on the local machine."""
 
-    # Define command meta data.
     __author__ = "Shawn Davis <shawn@develmaycare.com>"
-    __date__ = "2016-12-12"
-    __help__ = """"""
-    __version__ = "0.1.2-d"
+    __date__ = "2017-02-04"
+    __help__ = """FILTERING
 
-    # Initialize the argument parser.
+Use the -f/--filter option to by most project attributes:
+
+- category
+- description (partial, case insensitive)
+- name (partial, case insensitive)
+- org (business/client code)
+- scm
+- tag
+- type
+
+The special --hold option may be used to list only projects that are on hold. See the holdproject command.
+
+"""
+    __version__ = "3.1.0-a"
+
+    # Define options and arguments.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
 
     parser.add_argument(
-        "project_name",
-        help="The name of the project. The directory will be created if it does not exist in $PROJECT_HOME",
+        "-a",
+        "--all",
+        action="store_true",
+        dest="show_all",
+        help="Show projects even if there is no project.ini file."
     )
 
     parser.add_argument(
-        "--business=",
-        dest="business_name",
-        help="Set the name of the developer organization."
+        "--archive",
+        action="store_true",
+        dest="list_archive",
+        help="Only list projects that are staged for archiving."
     )
 
     parser.add_argument(
-        "-B=",
-        dest="business_code",
-        help="Business code. If omitted it is automatically dervied from the business name."
+        "--branch",
+        action="store_true",
+        dest="show_branch",
+        help="Show the current SCM branch name for each project."
     )
 
     parser.add_argument(
-        "-c=",
-        "--category=",
-        dest="category",
-        help='Project category. For example, django or wagtail. Default is "uncategorized".'
+        "--dirty",
+        action="store_true",
+        dest="show_dirty",
+        help="Only show projects with dirty repos."
     )
 
     parser.add_argument(
-        "--client=",
-        dest="client_name",
-        help="Set the name of the client organization."
+        "-d",
+        "--disk",
+        action="store_true",
+        dest="include_disk",
+        help="Calculate disk space. Takes longer to run."
     )
 
     parser.add_argument(
-        "-C=",
-        dest="client_code",
-        help="Client code. If omitted it is automatically derived from the client name."
+        "-f=",
+        "--filter=",
+        action="append",
+        dest="criteria",
+        help="Specify filter in the form of key:value. This may be repeated. Use ? to list available values."
     )
 
     parser.add_argument(
-        "-d=",
-        "--description=",
-        dest="description",
-        help="A brief description of the project."
-    )
-
-    parser.add_argument(
-        "-L=",
-        "--license=",
-        dest="license_code",
-        help="License code. Use lice --help for list of valid codes."
+        "--hold",
+        action="store_true",
+        dest="list_on_hold",
+        help="Only list projects that are on hold."
     )
 
     parser.add_argument(
@@ -547,33 +1432,6 @@ def project_init():
         default=PROJECT_HOME,
         dest="project_home",
         help="Path to where projects are stored. Defaults to %s" % PROJECT_HOME
-    )
-
-    parser.add_argument(
-        "--prompt=",
-        action="store_true",
-        dest="prompt",
-        help="Prompt for options rather than providing them via the command line."
-    )
-
-    parser.add_argument(
-        "-s=",
-        "--status=",
-        dest="status",
-        help="Filter by project status. Use ? to list available statuses."
-    )
-
-    parser.add_argument(
-        "--title=",
-        dest="title",
-        help="Specify the project title. Defaults to the project name."
-    )
-
-    parser.add_argument(
-        "-t=",
-        "--type=",
-        dest="project_type",
-        help='Specify the project type. Defaults to "project".'
     )
 
     # Access to the version number requires special consideration, especially
@@ -595,115 +1453,307 @@ def project_init():
 
     # Parse arguments. Help, version, and usage errors are automatically handled.
     args = parser.parse_args()
+    # print args
 
-    # Get additional options if prompted.
-    if args.prompt:
+    # Get the path to where projects are stored.
+    if args.list_archive:
+        project_home = PROJECT_ARCHIVE
+    elif args.list_on_hold:
+        project_home = PROJECTS_ON_HOLD
+    else:
+        project_home = args.project_home
 
-        if args.title:
-            title = args.title
-        else:
-            title = get_input("Title", default=args.project_name)
+    # Capture (and validate) filtering options.
+    criteria = dict()
+    if args.criteria:
+        for c in args.criteria:
 
-        if args.description:
-            description = args.description
-        else:
-            description = get_input("Description")
+            # We need to test for the proper format of the each filter given.
+            try:
+                key, value = c.split(":")
+            except ValueError:
+                print_warning('Filter must be given in "key:value" format: %s' % c)
+                sys.exit(EXIT_INPUT)
 
-        if args.category:
-            category = args.category
-        else:
-            category = get_input("Category")
+            # Handle requests to display available values by which filtering may occur. Otherwise, set criteria.
+            if value == "?":
+                print(key)
+                print("-" * 80)
 
-        if args.project_type:
-            project_type = args.project_type
-        else:
-            project_type = get_input("Type", default="project")
+                d = get_distinct_project_attributes(key, path=project_home)
+                for name, count in d.items():
+                    print("%s (%s)" % (name, count))
 
-        is_client_project = get_input("Is this project for a client?", choices=["y", "n"])
-        if is_client_project == "y":
+                print("")
 
-            if args.client_name:
-                client_name = args.client_name
+                sys.exit(EXIT_OK)
             else:
-                client_name = get_input("Client Name", required=True)
+                criteria[key] = value
 
-            if args.client_name:
-                client_code = args.client_code
-            else:
-                default_client_code = BaseOrganization.get_default_code(client_name)
-                client_code = get_input("Client Code", default=default_client_code)
-        else:
-            client_code = None
-            client_name = None
+    # Print the report heading.
+    heading = "Projects"
+    if "type" in criteria:
+        heading += " (%s)" % criteria['type']
 
-        if args.business_name:
-            business_name = args.business_name
-        else:
-            business_name = get_input("Business/Developer Name", required=True)
+    print("=" * 130)
+    print(heading)
+    print("=" * 130)
 
-        if args.business_code:
-            business_code = args.business_code
-        else:
-            default_business_code = BaseOrganization.get_default_code(business_name)
-            business_code = get_input("Business/Developer Code", default=default_business_code)
+    # Print the column headings.
+    print(
+        "%-30s %-20s %-15s %-5s %-10s %-15s %-10s %-20s"
+        % ("Title", "Category", "Type", "Org", "Version", "Status", "Disk", "SCM")
+    )
+    print("-" * 130)
 
-        if args.status:
-            status = args.status
-        else:
-            status = get_input("Status", default=DEVELOPMENT)
+    # Add criteria not included with the --filter option.
+    if args.show_dirty:
+        criteria['is_dirty'] = True
 
-        if args.license_code:
-            license_code = args.license_code
-        else:
-            license_code = get_input("License", choices=LICENSE_CHOICES, default="bsd3")
-    else:
-        business_code = args.business_code
-        business_name = args.business_name
-        category = args.category or "uncategorized"
-        client_code = args.client_code
-        client_name = args.client_name
-        description = args.description
-        license_code = args.license_code or "bsd3"
-        project_type = args.project_type or "project"
-        status = args.status or DEVELOPMENT
-        title = args.title or args.project_name
+    # Print the rows.
+    projects = get_projects(
+        project_home,
+        criteria=criteria,
+        include_disk=args.include_disk,
+        show_all=args.show_all
+    )
 
-    # Create instances for business and client.
-    if business_name:
-        business = Business(business_name, code=business_code)
-    else:
-        business = None
-
-    if client_name:
-        client = Client(client_name, code=client_code)
-    else:
-        client = None
-
-    # Create a project instance.
-    project = Project(args.project_name, path=args.project_home)
-
-    # Set project values from input.
-    project.business = business
-    project.category = category
-    project.client = client
-    project.description = description
-    project.license = license_code
-    project.type = project_type
-    project.status = status
-    project.title = title
-
-    # Initialize the project.
-    if project.initialize():
+    if len(projects) == 0:
+        print("")
+        print("No results.")
         sys.exit(EXIT_OK)
+
+    dirty_count = 0
+    dirty_list = list()
+    error_count = 0
+    for p in projects:
+
+        if len(p.title) > 30:
+            title = p.title[:27] + "..."
+        else:
+            title = p.title
+
+        if p.config_exists:
+            config_exists = ""
+        else:
+            config_exists = "*"
+
+        if p.has_error:
+            config_exists += " (e)"
+            error_count += 1
+        else:
+            pass
+
+        if p.is_dirty:
+            dirty_count += 1
+            dirty_list.append(p.name)
+            scm = "%s+" % p.scm
+        else:
+            scm = str(p.scm)
+
+        if args.show_branch:
+            if p.branch:
+                scm += " (%s)" % p.branch
+            else:
+                scm += " (unknown)"
+
+        print(
+            "%-30s %-20s %-15s %-5s %-10s %-15s %-10s %-20s %-1s"
+            % (title, p.category, p.type, p.org, p.version, p.status, p.disk, scm, config_exists)
+        )
+
+    if len(projects) == 1:
+        label = "result"
     else:
-        print_error(project.get_error(), exit_code=EXIT_OTHER)
+        label = "results"
+
+    print("-" * 130)
+    print("")
+    print("%s %s." % (len(projects), label))
+
+    if args.show_all:
+        print("* indicates absence of project.ini file.")
+
+    if error_count >= 1:
+        print("(e) indicates an error parsing the project.ini file. Use the --name switch to find out more.")
+
+    if dirty_count == 1:
+        print("One project with uncommitted changes: %s" % dirty_list[0])
+    elif dirty_count > 1:
+        print("%s projects with uncommitted changes." % dirty_count)
+        for i in dirty_list:
+            print("    cd %s/%s && git st" % (PROJECT_HOME, i))
+    else:
+        print("No projects with uncommitted changes.")
+
+    # Quit.
+    sys.exit(EXIT_OK)
+
+
+def list_repos_command():
+    """List source code repos that have been discovered by the checkoutproject command."""
+
+    __author__ = "Shawn Davis <shawn@develmaycare.com>"
+    __date__ = "2017-02-07"
+    __help__ = """FILTERING
+
+Use the -f/--filter option to by most project attributes:
+
+- name (partial, case insensitive)
+- project
+- host (bitbucket, bb, github, gh)
+- type (git, hg, svn)
+- user
+"""
+    __version__ = "0.1.2-d"
+
+    # Define options and arguments.
+    parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
+
+    parser.add_argument(
+        "-f=",
+        "--filter=",
+        action="append",
+        dest="criteria",
+        help="Specify filter in the form of key:value. This may be repeated. Use ? to list available values."
+    )
+
+    parser.add_argument(
+        "--hold",
+        action="store_true",
+        dest="list_on_hold",
+        help="Only list projects that are on hold."
+    )
+
+    # parser.add_argument(
+    #     "-p=",
+    #     "--path=",
+    #     default=PYPROJECTUTILS_CONFIG,
+    #     dest="pyprojectutils_config",
+    #     help="Path to where repo meta data is stored. Defaults to %s" % PYPROJECTUTILS_CONFIG
+    # )
+
+    # Access to the version number requires special consideration, especially
+    # when using sub parsers. The Python 3.3 behavior is different. See this
+    # answer: http://stackoverflow.com/questions/8521612/argparse-optional-subparser-for-version
+    # parser.add_argument('--version', action='version', version='%(prog)s 2.0')
+    parser.add_argument(
+        "-v",
+        action="version",
+        help="Show version number and exit.",
+        version=__version__
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        help="Show verbose version information and exit.",
+        version="%(prog)s" + " %s %s by %s" % (__version__, __date__, __author__)
+    )
+
+    # Parse arguments. Help, version, and usage errors are automatically handled.
+    args = parser.parse_args()
+    # print args
+
+    # TODO: Get the path to where repo meta data is stored.
+    path = REPO_META_PATH
+
+    # Capture (and validate) filtering options.
+    criteria = dict()
+    if args.criteria:
+        for c in args.criteria:
+
+            # We need to test for the proper format of the each filter given.
+            try:
+                key, value = c.split(":")
+            except ValueError:
+                print_warning('Filter must be given in "key:value" format: %s' % c)
+                sys.exit(EXIT_INPUT)
+
+            # TODO: Handle requests to display available values by which filtering may occur. Otherwise, set criteria.
+            # if value == "?":
+            #     print(key)
+            #     print("-" * 80)
+            #
+            #     d = get_distinct_project_attributes(key, path=project_home)
+            #     for name, count in d.items():
+            #         print("%s (%s)" % (name, count))
+            #
+            #     print("")
+            #
+            #     sys.exit(EXIT_OK)
+            # else:
+            #     criteria[key] = value
+            criteria[key] = value
+
+    # Print the report heading.
+    heading = "Repos"
+    if "type" in criteria:
+        heading += " (%s)" % criteria['type']
+
+    print("=" * 130)
+    print(heading)
+    print("=" * 130)
+
+    # Print the column headings.
+    print(
+        "%-30s %-30s %-15s %-15s %-15s %-5s"
+        % ("Name", "Project", "Type", "Host", "User", "")
+    )
+    print("-" * 130)
+
+    # Print the rows.
+    repos = Repo.get_repos(criteria=criteria, path=path)
+
+    if len(repos) == 0:
+        print("")
+        print("No results.")
+        sys.exit(EXIT_OK)
+
+    error_count = 0
+    for r in repos:
+
+        if len(r.name) > 30:
+            name = r.name[:27] + "..."
+        else:
+            name = r.name
+
+        if len(r.project) > 30:
+            project = r.project[:27] + "..."
+        else:
+            project = r.project
+
+        if r.has_error:
+            error = "(e)"
+            error_count += 1
+        else:
+            error = ""
+
+        print(
+            "%-30s %-30s %-15s %-15s %-15s %-5s"
+            % (name, project, r.type, r.host, r.user, error)
+        )
+
+    if len(repos) == 1:
+        label = "result"
+    else:
+        label = "results"
+
+    print("-" * 130)
+    print("")
+    print("%s %s." % (len(repos), label))
+
+    if error_count >= 1:
+        print("(e) indicates an error.")
+
+    # Quit.
+    sys.exit(EXIT_OK)
 
 
 def project_parser():
     """Find, parse, and collect project information."""
 
     __author__ = "Shawn Davis <shawn@develmaycare.com>"
-    __date__ = "2016-12-11"
+    __date__ = "2016-12-24"
     __help__ = """FILTERING
 
 Use the -f/--filter option to by most project attributes:
@@ -716,8 +1766,10 @@ Use the -f/--filter option to by most project attributes:
 - tag
 - type
 
+The special --hold option may be used to list only projects that are on hold. See the holdproject command.
+
 """
-    __version__ = "2.0.0-d"
+    __version__ = "2.1.0-d"
 
     # Define options and arguments.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
@@ -754,6 +1806,13 @@ Use the -f/--filter option to by most project attributes:
     )
 
     parser.add_argument(
+        "--hold",
+        action="store_true",
+        dest="list_on_hold",
+        help="Only list projects that are on hold."
+    )
+
+    parser.add_argument(
         "-n=",
         "--name=",
         dest="project_name",
@@ -785,9 +1844,17 @@ Use the -f/--filter option to by most project attributes:
         version="%(prog)s" + " %s %s by %s" % (__version__, __date__, __author__)
     )
 
+    print_warning("This function is no longer used.", EXIT_OTHER)
+
     # Parse arguments. Help, version, and usage errors are automatically handled.
     args = parser.parse_args()
     # print args
+
+    # Get the path to where projects are stored.
+    if args.list_on_hold:
+        project_home = PROJECTS_ON_HOLD
+    else:
+        project_home = args.project_home
 
     # Capture (and validate) filtering options.
     criteria = dict()
@@ -806,7 +1873,7 @@ Use the -f/--filter option to by most project attributes:
                 print(key)
                 print("-" * 80)
 
-                d = get_distinct_project_attributes(key, path=args.project_home)
+                d = get_distinct_project_attributes(key, path=project_home)
                 for name, count in d.items():
                     print("%s (%s)" % (name, count))
 
@@ -818,7 +1885,7 @@ Use the -f/--filter option to by most project attributes:
 
     # Handle project by name requests.
     if args.project_name:
-        project = autoload_project(args.project_name, include_disk=args.include_disk, path=args.project_home)
+        project = autoload_project(args.project_name, include_disk=args.include_disk, path=project_home)
 
         if not project.is_loaded:
             print("Could not autoload the project: %s" % args.project_name)
@@ -854,7 +1921,7 @@ Use the -f/--filter option to by most project attributes:
 
     # Print the rows.
     projects = get_projects(
-        args.project_home,
+        project_home,
         criteria=criteria,
         include_disk=args.include_disk,
         show_all=args.show_all
@@ -991,170 +2058,4 @@ def project_status():
 
     print(project.to_markdown())
 
-    sys.exit(EXIT_OK)
-
-
-def version_update():
-    """Increment the version number immediately after checking out a release branch."""
-
-    __author__ = "Shawn Davis <shawn@develmaycare.com>"
-    __date__ = "2016-12-11"
-    __help__ = """
-
-    """
-    __version__ = "0.12.0-d"
-
-    # Define options and arguments.
-    parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
-
-    parser.add_argument(
-        "project_name",
-        help="The name of the project. Typically, the directory name in which the project is stored."
-    )
-
-    parser.add_argument(
-        "-b=",
-        "--build=",
-        dest="build",
-        help="Supply build meta data."
-    )
-
-    parser.add_argument(
-        "-M",
-        "--major",
-        action="store_true",
-        dest="major",
-        help="Increase the major version number when you make changes to the public API that are "
-             "backward-incompatible."
-    )
-
-    parser.add_argument(
-        "-m",
-        "--minor",
-        action="store_true",
-        dest="minor",
-        help="Increase the minor version number when new or updated functionality has been implemented "
-             "that does not change the public API."
-    )
-
-    parser.add_argument(
-        "-n=",
-        "--name=",
-        dest="name",
-        help="Name your release."
-    )
-
-    parser.add_argument(
-        "-p",
-        "--patch",
-        action="store_true",
-        dest="patch",
-        help="Set (or increase) the patch level when backward-compatible bug-fixes have been implemented."
-    )
-
-    parser.add_argument(
-        "-P=",
-        "--path=",
-        default=PROJECT_HOME,
-        dest="path",
-        help="The path to where projects are stored. Defaults to %s" % PROJECT_HOME
-    )
-
-    parser.add_argument(
-        "--preview",
-        action="store_true",
-        dest="preview_only",
-        help="Preview the output, but don't make any changes."
-    )
-
-    parser.add_argument(
-        "-s=",
-        "--status=",
-        dest="status",
-        help="Use the status to denote a pre-release version."
-    )
-
-    parser.add_argument(
-        "-T=",
-        "--template=",
-        dest="template",
-        help="Path to the version.py template you would like to use. Use ? to see the default."
-    )
-
-    # Access to the version number requires special consideration, especially
-    # when using sub parsers. The Python 3.3 behavior is different. See this
-    # answer: http://stackoverflow.com/questions/8521612/argparse-optional-subparser-for-version
-    # parser.add_argument('--version', action='version', version='%(prog)s 2.0')
-    parser.add_argument(
-        "-v",
-        action="version",
-        help="Show version number and exit.",
-        version=__version__
-    )
-    parser.add_argument(
-        "--version",
-        action="version",
-        help="Show verbose version information and exit.",
-        version="%(prog)s" + " %s %s by %s" % (__version__, __date__, __author__)
-    )
-
-    # This will display help or input errors as needed.
-    args = parser.parse_args()
-    # print args
-
-    # Display the default version.py template.
-    if args.template == "?":
-        print(Version.get_template())
-        sys.exit(EXIT_OK)
-
-    # Get the project. Make sure it exists.
-    project = Project(args.project_name, args.path)
-    if not project.exists:
-        print("Project does not exist: %s" % project.name)
-        sys.exit(EXIT_INPUT)
-
-    # Initialize version instance.
-    version = Version(project.version)
-
-    # Update the version or (by default) display the current version.
-    if args.major:
-        version.bump(major=True, status=args.status, build=args.build)
-    elif args.minor:
-        version.bump(minor=True, status=args.status, build=args.build)
-    elif args.patch:
-        version.bump(patch=True, status=args.status, build=args.build)
-    else:
-        print(version)
-        sys.exit(EXIT_OK)
-
-    # Set the version name.
-    if args.name:
-        version.name = args.name
-
-    # Write the VERSION.txt file.
-    if args.preview_only:
-        print("Write: %s" % project.version_txt)
-        print(version.to_string())
-        print("")
-    else:
-        write_file(project.version_txt, version.to_string())
-
-    # Write the version.py file.
-    if project.version_py:
-        if args.template:
-            content = parse_template(version.get_context(), args.template)
-        else:
-            content = parse_template(version.get_context(), Version.get_template())
-
-        if args.preview_only:
-            print("Write: %s" % project.version_py)
-            print("-" * 80)
-            print(content)
-            print("-" * 80)
-            print("")
-        else:
-            write_file(project.version_py, content)
-
-    # Quit.
-    print(version.to_string())
     sys.exit(EXIT_OK)

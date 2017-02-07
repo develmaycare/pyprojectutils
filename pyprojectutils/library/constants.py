@@ -2,8 +2,16 @@ import os
 
 __all__ = (
     "BASE_ENVIRONMENT",
+    "BITBUCKET_ENABLED",
+    "BITBUCKET_SCM",
+    "BITBUCKET_USER",
+    "BUSINESS",
+    "CLIENT",
     "CONTROL_ENVIRONMENT",
+    "DEFAULT_SCM",
     "DEVELOPMENT",
+    "DEVELOPER_CODE",
+    "DEVELOPER_NAME",
     "DEVELOPMENT_ENVIRONMENT",
     "ENVIRONMENTS",
     "EXIT_ENV",
@@ -14,15 +22,19 @@ __all__ = (
     "EXPERIMENTAL",
     "GITHUB_ENABLED",
     "GITHUB_PASSWORD",
+    "GITHUB_SCM",
     "GITHUB_USER",
     "LICENSE_CHOICES",
-    "PROJECT_HOME",
-    "TESTING",
-    "TESTING_ENVIRONMENT",
-    "STAGING",
-    "STAGING_ENVIRONMENT",
     "LIVE",
     "LIVE_ENVIRONMENT",
+    "PROJECT_ARCHIVE",
+    "PROJECT_HOME",
+    "PROJECTS_ON_HOLD",
+    "REPO_META_PATH",
+    "STAGING",
+    "STAGING_ENVIRONMENT",
+    "TESTING",
+    "TESTING_ENVIRONMENT",
 )
 
 # The developer name is the name of an individual or company that creates and manages projects. The code is merely a
@@ -33,7 +45,6 @@ DEVELOPER_NAME = os.environ.get("DEVELOPER_NAME", "Unidentified")
 # Organization types help identify who is involved in a project.
 BUSINESS = "business"
 CLIENT = "client"
-
 
 # Standard stage identifiers.
 EXPERIMENTAL = "experimental"
@@ -71,6 +82,17 @@ EXIT_OTHER = 4
 # Location of projects. User home is automatically expanded.
 PROJECT_HOME = os.environ.get("PROJECT_HOME", "~/Work")
 
+# Location of archived projects.
+PROJECT_ARCHIVE = os.environ.get("PROJECT_ARCHIVE", os.path.join(PROJECT_HOME, ".archive"))
+
+# Location of projects on hold.
+PROJECTS_ON_HOLD = os.environ.get("PROJECTS_ON_HOLD", os.path.join(PROJECT_HOME, ".hold"))
+
+# Support for source code repo meta data.
+BITBUCKET_SCM = "bitbucket.org"
+GITHUB_SCM = "github.com"
+REPO_META_PATH = os.environ.get("REPO_META_PATH", os.path.join(PROJECT_HOME, ".repos"))
+
 # License options for the lice command.
 LICENSE_CHOICES = (
     "afl3",
@@ -97,12 +119,23 @@ LICENSE_CHOICES = (
     "zlib",
 )
 
-# Github integration is only possible if the user sets a user and password in the local environment.
-try:
-    GITHUB_USER = os.environ['GITHUB_USER']
-    GITHUB_PASSWORD = os.environ['GITHUB_PASSWORD']
+# Bitbucket integration requires a user name and password.
+BITBUCKET_USER = os.environ.get("BITBUCKET_USER", None)
+BITBUCKET_PASSWORD = os.environ.get("BITBUCKET_PASSWORD", None)
+
+if BITBUCKET_USER and BITBUCKET_USER:
+    BITBUCKET_ENABLED = True
+else:
+    BITBUCKET_ENABLED = False
+
+# GitHub integration is only possible if the user sets a user and password in the local environment.
+GITHUB_USER = os.environ.get("GITHUB_USER", None)
+GITHUB_PASSWORD = os.environ.get("GITHUB_PASSWORD", None)
+
+if GITHUB_USER and GITHUB_PASSWORD:
     GITHUB_ENABLED = True
-except KeyError:
-    GITHUB_PASSWORD = None
-    GITHUB_USER = None
+else:
     GITHUB_ENABLED = False
+
+# The default SCM is the user's preferred provider (host) for repos.
+DEFAULT_SCM = os.environ.get("DEFAULT_SCM", "github")

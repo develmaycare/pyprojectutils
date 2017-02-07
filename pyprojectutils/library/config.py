@@ -2,6 +2,7 @@
 
 from ConfigParser import ParsingError, RawConfigParser
 from os.path import exists as path_exists
+from .shortcuts import write_file
 
 # Classes
 
@@ -85,6 +86,23 @@ class Config(object):
         self.is_loaded = True
         return True
 
+    def to_string(self):
+        """Get the config as a string.
+
+        :rtype: str
+
+        """
+        a = list()
+        for name in self._sections:
+            section = self.get_section(name)
+            a.append(section.to_string())
+
+        return "\n".join(a)
+
+    def write(self):
+        """Write the current configuration to disk."""
+        write_file(self.path, self.to_string())
+
     def _load_section(self, name, values):
         """Instantiate a new section.
 
@@ -148,6 +166,21 @@ class Section(object):
                 a.append("*tags*: %s  " % ",".join(value))
             else:
                 a.append("*%s*: %s  " % (key, value))
+
+        a.append("")
+
+        return "\n".join(a)
+
+    def to_string(self):
+        """Conver the section to a string.
+
+        :rtype: str
+
+        """
+        a = list()
+        a.append("[%s]" % self._name)
+        for key, value, in self._context.items():
+            a.append("%s = %s" % (key, value))
 
         a.append("")
 

@@ -31,7 +31,7 @@ def export_github_command():
     __help__ = """
 We look for labels of ready, in progress, on hold, and review to determine the issue's current position in the workflow.
         """
-    __version__ = "0.2.0-d"
+    __version__ = "0.2.1-d"
 
     # Define options and arguments.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
@@ -61,6 +61,14 @@ We look for labels of ready, in progress, on hold, and review to determine the i
         action="append",
         dest="labels",
         help="Filter for a specific label."
+    )
+
+    parser.add_argument(
+        "--no-header",
+        action="store_true",
+        dest="no_header",
+        help="Don't output the header for the format (if any). Also produces no footer. Useful for repeating the "
+             "command."
     )
 
     # Access to the version number requires special consideration, especially
@@ -107,32 +115,44 @@ We look for labels of ready, in progress, on hold, and review to determine the i
     # Start the output based on output format.
     issues = list()
     if args.output_format == "html":
-        issues.append('<table>')
-        issues.append('<thead>')
-        issues.append('<tr>')
-        issues.append('<th>Title</th>')
-        issues.append('<th>Description</th>')
-        issues.append('<th>Start Date</th>')
-        issues.append('<th>End Date</th>')
-        issues.append('<th>Bucket</th>')
-        issues.append('<th>Status</th>')
-        issues.append('<th>Milestone</th>')
-        issues.append('<th>Labels</th>')
-        issues.append('<th>Assigned To</th>')
-        issues.append('</tr>')
-        issues.append('</thead>')
-        issues.append('<tbody>')
+        if args.no_header:
+            pass
+        else:
+            issues.append('<table>')
+            issues.append('<thead>')
+            issues.append('<tr>')
+            issues.append('<th>Title</th>')
+            issues.append('<th>Description</th>')
+            issues.append('<th>Start Date</th>')
+            issues.append('<th>End Date</th>')
+            issues.append('<th>Bucket</th>')
+            issues.append('<th>Status</th>')
+            issues.append('<th>Milestone</th>')
+            issues.append('<th>Labels</th>')
+            issues.append('<th>Assigned To</th>')
+            issues.append('</tr>')
+            issues.append('</thead>')
+            issues.append('<tbody>')
     elif args.output_format == "markdown":
-        issues.append("|Title|Description|Start Date|End Date|Bucket|Status|Milestone|Labels|Assigned To|")
-        issues.append("|-----|-----------|----------|--------|------|------|---------|------|-----------|")
+        if args.no_header:
+            pass
+        else:
+            issues.append("|Title|Description|Start Date|End Date|Bucket|Status|Milestone|Labels|Assigned To|")
+            issues.append("|-----|-----------|----------|--------|------|------|---------|------|-----------|")
     elif args.output_format == "rst":
-        issues.append(".. csv-table:: %s issues" % args.repo_name)
-        issues.append("    :header: Title,Description,Start Date,End Date,Bucket,Status,Milestone,Labels,Assigned To")
-        issues.append("")
+        if args.no_header:
+            pass
+        else:
+            issues.append(".. csv-table:: %s issues" % args.repo_name)
+            issues.append("    :header: Title,Description,Start Date,End Date,Bucket,Status,Milestone,Labels,Assigned To")
+            issues.append("")
     elif args.output_format == "txt":
         pass
     else:
-        issues.append("Item,Description,Start Date,End Date,Bucket,Status,Milestone,Labels,Assignee")
+        if args.no_header:
+            pass
+        else:
+            issues.append("Item,Description,Start Date,End Date,Bucket,Status,Milestone,Labels,Assignee")
 
     # Get the issues in the repo. Assemble the output.
     count = 0
@@ -245,12 +265,22 @@ We look for labels of ready, in progress, on hold, and review to determine the i
 
     # Close the output.
     if args.output_format == "html":
-        issues.append('</tbody>')
-        issues.append('</table>')
+        if args.no_header:
+            pass
+        else:
+            issues.append('</tbody>')
+            issues.append('</table>')
     elif args.output_format == "markdown":
-        issues.append("")
+        if args.no_header:
+            pass
+        else:
+            issues.append("")
     elif args.output_format == "rst":
-        issues.append("")
+        if args.no_header:
+            pass
+        else:
+            issues.append("")
+
     elif args.output_format == "txt":
         pass
     else:
@@ -1704,8 +1734,8 @@ Use the -f/--filter option to by most project attributes:
 
     # Print the column headings.
     print(
-        "%-30s %-30s %-15s %-15s %-15s %-5s"
-        % ("Name", "Project", "Type", "Host", "User", "")
+        "%-30s %-30s %-15s %-15s %-20s %-15s %-5s"
+        % ("Name", "Project", "Type", "Host", "User", "Private", "")
     )
     print("-" * 130)
 
@@ -1736,9 +1766,14 @@ Use the -f/--filter option to by most project attributes:
         else:
             error = ""
 
+        if r.is_private in (True, "True", "yes"):
+            private = "yes"
+        else:
+            private = "no"
+
         print(
-            "%-30s %-30s %-15s %-15s %-15s %-5s"
-            % (name, project, r.type, r.host, r.user, error)
+            "%-30s %-30s %-15s %-15s %-20s %-15s %-5s"
+            % (name, project, r.type, r.host, r.user, private, error)
         )
 
     if len(repos) == 1:

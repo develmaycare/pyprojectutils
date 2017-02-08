@@ -22,6 +22,10 @@ setup(
     install_requires=[
         "semver",
     ],
+    dependency_links=[
+        "https://github.com/develmaycare/python-datetime-machine.git",
+        "https://github.com/PyGithub/PyGithub.git",
+    ],
     classifiers=[
         'Development Status :: 2 - Pre-Alpha',
         'Environment :: Console',

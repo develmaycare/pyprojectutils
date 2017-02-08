@@ -31,7 +31,7 @@ def export_github_command():
     __help__ = """
 We look for labels of ready, in progress, on hold, and review to determine the issue's current position in the workflow.
         """
-    __version__ = "0.2.1-d"
+    __version__ = "0.2.3-d"
 
     # Define options and arguments.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
@@ -45,6 +45,14 @@ We look for labels of ready, in progress, on hold, and review to determine the i
         "output_file",
         help="The file (or path) to which data should be exported. If omitted, the export goes to STDOUT.",
         nargs="?"
+    )
+
+    parser.add_argument(
+        "--extra=",
+        action="append",
+        dest="extra_columns",
+        help="Add extra column output in the form of column_name:value. Useful when repeating the command via a shell "
+             "script."
     )
 
     parser.add_argument(
@@ -103,14 +111,23 @@ We look for labels of ready, in progress, on hold, and review to determine the i
     args = parser.parse_args()
     # print args
 
-    # Initialize the connection to github.
-    gh = Github(GITHUB_USER, GITHUB_PASSWORD)
+    # Set the columns.
+    columns = [
+        "Item",
+        "Description",
+        "Start Date",
+        "End Date",
+        "Bucket",
+        "Status",
+        "Grouping",
+        "Labels",
+        "Assigned To",
+    ]
 
-    # Seems like loading the user is required to get at the other data.
-    user = gh.get_user()
-
-    # Get the repo instance.
-    repo = user.get_repo(args.repo_name)
+    if args.extra_columns:
+        for c in args.extra_columns:
+            name, value = c.split(":")
+            columns.append(name)
 
     # Start the output based on output format.
     issues = list()
@@ -121,15 +138,10 @@ We look for labels of ready, in progress, on hold, and review to determine the i
             issues.append('<table>')
             issues.append('<thead>')
             issues.append('<tr>')
-            issues.append('<th>Title</th>')
-            issues.append('<th>Description</th>')
-            issues.append('<th>Start Date</th>')
-            issues.append('<th>End Date</th>')
-            issues.append('<th>Bucket</th>')
-            issues.append('<th>Status</th>')
-            issues.append('<th>Milestone</th>')
-            issues.append('<th>Labels</th>')
-            issues.append('<th>Assigned To</th>')
+
+            for column_name in columns:
+                issues.append('<th>%s</th>' % column_name)
+
             issues.append('</tr>')
             issues.append('</thead>')
             issues.append('<tbody>')
@@ -137,14 +149,22 @@ We look for labels of ready, in progress, on hold, and review to determine the i
         if args.no_header:
             pass
         else:
-            issues.append("|Title|Description|Start Date|End Date|Bucket|Status|Milestone|Labels|Assigned To|")
-            issues.append("|-----|-----------|----------|--------|------|------|---------|------|-----------|")
+            issues.append("|" + "|".join(columns) + "|")
+
+            a = list()
+            for column_name in columns:
+                a.append("-" * len(column_name))
+
+            issues.append("|" + "|".join(a) + "|")
+
+            # issues.append("|Title|Description|Start Date|End Date|Bucket|Status|Milestone|Labels|Assigned To|")
+            # issues.append("|-----|-----------|----------|--------|------|------|---------|------|-----------|")
     elif args.output_format == "rst":
         if args.no_header:
             pass
         else:
             issues.append(".. csv-table:: %s issues" % args.repo_name)
-            issues.append("    :header: Title,Description,Start Date,End Date,Bucket,Status,Milestone,Labels,Assigned To")
+            issues.append("    :header: %s" % ",".join(columns))
             issues.append("")
     elif args.output_format == "txt":
         pass
@@ -152,7 +172,18 @@ We look for labels of ready, in progress, on hold, and review to determine the i
         if args.no_header:
             pass
         else:
-            issues.append("Item,Description,Start Date,End Date,Bucket,Status,Milestone,Labels,Assignee")
+            # Roadmunk has it's own internal column for Milestone. So we rename GitHub's Milestone to "Grouping" for
+            # CSV output.
+            issues.append(",".join(columns))
+
+    # Initialize the connection to github.
+    gh = Github(GITHUB_USER, GITHUB_PASSWORD)
+
+    # Seems like loading the user is required to get at the other data.
+    user = gh.get_user()
+
+    # Get the repo instance.
+    repo = user.get_repo(args.repo_name)
 
     # Get the issues in the repo. Assemble the output.
     count = 0
@@ -220,6 +251,7 @@ We look for labels of ready, in progress, on hold, and review to determine the i
         # Set the bucket if start and end date are not available.
         bucket = ""
         if not start_date and not end_date:
+            bucket = "Future"
             for label in labels:
                 if "bucket" in label:
                     bucket = label.split(":")[-1].strip()
@@ -235,6 +267,13 @@ We look for labels of ready, in progress, on hold, and review to determine the i
         description = i.body.split(".")[0]
         description += ". Read more: %s" % i.html_url
 
+        # Get extra (static) columns.
+        extra_columns = list()
+        if args.extra_columns:
+            for c in args.extra_columns:
+                name, value = c.split(":")
+                extra_columns.append(value)
+
         # Create the issue instance.
         issue = Issue(
             i.title,
@@ -242,6 +281,7 @@ We look for labels of ready, in progress, on hold, and review to determine the i
             bucket=bucket,
             description=description,
             end_date=end_date,
+            extra_columns=extra_columns,
             labels=labels,
             milestone=milestone_title,
             start_date=start_date,
@@ -287,11 +327,12 @@ We look for labels of ready, in progress, on hold, and review to determine the i
         pass
 
     # Write the output.
-    output = "\n".join(issues)
-    if args.output_file:
-        write_file(args.output_file, output)
-    else:
-        print(output)
+    if len(issues) > 0:
+        output = "\n".join(issues)
+        if args.output_file:
+            write_file(args.output_file, output)
+        else:
+            print(output)
 
     # Exit.
     sys.exit(EXIT_OK)

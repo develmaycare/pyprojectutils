@@ -1,16 +1,23 @@
+"""
+
+.. versionadded:: 0.24.0-d
+
+"""
+
 # Classes
 
 
 class Issue(object):
     """A generic representation of a record from issue management."""
 
-    def __init__(self, title, assigned_to=None, bucket=None, description=None, end_date=None, labels=None, milestone=None,
-                 start_date=None, status=None):
+    def __init__(self, title, assigned_to=None, bucket=None, description=None, end_date=None, extra_columns=None,
+                 labels=None, milestone=None, start_date=None, status=None):
 
         self.assigned_to = assigned_to
         self.bucket = bucket
         self.description = description
         self.end_date = end_date
+        self.extra_columns = extra_columns or list()
         self.labels = labels or list()
         self.milestone = milestone
         self.start_date = start_date
@@ -35,7 +42,7 @@ class Issue(object):
             self.milestone,
             ",".join(self.labels),
             self.assigned_to,
-        ]
+        ] + self.extra_columns
 
     def to_csv(self):
         """Get the issue as CSV.

@@ -251,6 +251,7 @@ class Project(Config):
         self.tags = list()
         self.title = None
         self.type = "project"
+        self.version = "0.1.0-d"
         self._requirements = list()
 
         # Handle config file. We have to do this here in order to call super() below.

@@ -1,3 +1,9 @@
+"""
+
+.. versionadded:: 0.24.0-d
+
+"""
+
 # Classes
 
 

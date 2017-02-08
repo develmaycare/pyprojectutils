@@ -1,3 +1,9 @@
+"""
+
+.. versionadded:: 0.23.0-d
+
+"""
+
 # Imports
 
 import base64
@@ -13,6 +19,9 @@ from .constants import BITBUCKET_SCM, BITBUCKET_PASSWORD, BITBUCKET_USER, DEFAUL
 # Exports
 
 __all__ = (
+    "get_bitbucket_repos",
+    "get_github_repos",
+    "get_repos",
     "Repo",
 )
 

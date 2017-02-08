@@ -87,6 +87,12 @@ Exceptions
 .. automodule:: library.exceptions
     :members:
 
+Issues
+------
+
+.. automodule:: library.issues
+    :members:
+
 Organizations
 -------------
 
@@ -115,6 +121,12 @@ Releases
 --------
 
 .. automodule:: library.releases
+    :members:
+
+Repos
+-----
+
+.. automodule:: library.repos
     :members:
 
 Shortcuts

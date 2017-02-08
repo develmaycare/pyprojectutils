@@ -15,7 +15,7 @@ from library.projects import autoload_project, get_distinct_project_attributes, 
 from library.organizations import BaseOrganization, Business, Client
 from library.passwords import RandomPassword
 from library.releases import Version
-from library.repos import Repo
+from library.repos import get_repos, Repo
 from library.shortcuts import find_file, get_input, make_dir, parse_template, print_error, print_info, print_warning, \
     read_file, write_file
 
@@ -1605,10 +1605,18 @@ Use the -f/--filter option to by most project attributes:
 - type (git, hg, svn)
 - user
 """
-    __version__ = "0.1.2-d"
+    __version__ = "0.2.0-d"
 
     # Define options and arguments.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
+
+    parser.add_argument(
+        "-a",
+        "--all",
+        action="store_true",
+        dest="show_all",
+        help="List all (even remote) repos."
+    )
 
     parser.add_argument(
         "-f=",
@@ -1702,7 +1710,7 @@ Use the -f/--filter option to by most project attributes:
     print("-" * 130)
 
     # Print the rows.
-    repos = Repo.get_repos(criteria=criteria, path=path)
+    repos = get_repos(all=args.show_all, criteria=criteria, path=path)
 
     if len(repos) == 0:
         print("")

@@ -9,8 +9,7 @@ Place a project in the archive.
 
 .. code-block:: plain
 
-    usage: archiveproject.py [-h] [--force] [-p= PROJECT_HOME] [-v] [--version]
-                         project_name
+    usage: archiveproject [-h] [--force] [-p= PROJECT_HOME] [-v] [--version] project_name
 
     positional arguments:
       project_name          The name of the project to archive.
@@ -159,8 +158,8 @@ Check out a project from a source code repository.
 
 .. code-block:: plain
 
-    usage: checkoutproject.py [-h] [-p= PROJECT_HOME] [-v] [--version]
-                              project_name [provider]
+    usage: checkoutproject [-h] [-p= PROJECT_HOME] [-v] [--version]
+                           project_name [provider]
 
     positional arguments:
       project_name          The name of the project. Typically, the directory name
@@ -202,7 +201,7 @@ Re-enable a project from hold or archive.
 
 .. code-block:: plain
 
-    usage: enableproject.py [-h] [-p= PROJECT_HOME] [-v] [--version] project_name
+    usage: enableproject [-h] [-p= PROJECT_HOME] [-v] [--version] project_name
 
     positional arguments:
       project_name          The name of the project to restore from hold or
@@ -226,9 +225,9 @@ Export Github milestones and issues.
 
 .. code-block::
 
-    usage: exportgithub.py [-h] [--format= {csv,html,markdown,rst,txt}]
-                           [-L= LABELS] [-v] [--version]
-                           repo_name [output_file]
+    usage: exportgithub [-h] [--format= {csv,html,markdown,rst,txt}]
+                        [-L= LABELS] [-v] [--version]
+                        repo_name [output_file]
 
     positional arguments:
       repo_name             Name of the repository.
@@ -277,8 +276,8 @@ Place a project on hold.
 
 .. code-block:: plain
 
-    usage: holdproject.py [-h] [--force] [-p= PROJECT_HOME] [-v] [--version]
-                          project_name
+    usage: holdproject [-h] [--force] [-p= PROJECT_HOME] [-v] [--version]
+                       project_name
 
     positional arguments:
       project_name          The name of the project to place on hold.
@@ -434,9 +433,9 @@ List projects managed on the local machine.
 
 .. code-block:: plain
 
-    usage: lsprojects.py [-h] [-a] [--archive] [--branch] [--dirty] [-d]
-                         [-f= CRITERIA] [--hold] [-p= PROJECT_HOME] [-v]
-                         [--version]
+    usage: lsprojects [-h] [-a] [--archive] [--branch] [--dirty] [-d]
+                      [-f= CRITERIA] [--hold] [-p= PROJECT_HOME] [-v]
+                      [--version]
 
     optional arguments:
       -h, --help            show this help message and exit
@@ -547,10 +546,11 @@ List source code repos that have been discovered by the checkoutproject command.
 
 ..  code-block:: plain
 
-    usage: lsrepos.py [-h] [-f= CRITERIA] [--hold] [-v] [--version]
+    usage: lsrepos [-h] [-a] [-f= CRITERIA] [--hold] [-v] [--version]
 
     optional arguments:
       -h, --help            show this help message and exit
+      -a, --all             List all (even remote) repos.
       -f= CRITERIA, --filter= CRITERIA
                             Specify filter in the form of key:value. This may be
                             repeated. Use ? to list available values.
@@ -567,7 +567,6 @@ List source code repos that have been discovered by the checkoutproject command.
     - host (bitbucket, bb, github, gh)
     - type (git, hg, svn)
     - user
-
 
 randompw
 ========

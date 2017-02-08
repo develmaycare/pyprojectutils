@@ -27,11 +27,11 @@ def export_github_command():
 
     # Define meta data.
     __author__ = "Shawn Davis <shawn@develmaycare.com>"
-    __date__ = "2017-02-07"
+    __date__ = "2017-02-08"
     __help__ = """
 We look for labels of ready, in progress, on hold, and review to determine the issue's current position in the workflow.
         """
-    __version__ = "0.2.3-d"
+    __version__ = "0.2.4-d"
 
     # Define options and arguments.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
@@ -135,7 +135,7 @@ We look for labels of ready, in progress, on hold, and review to determine the i
         if args.no_header:
             pass
         else:
-            issues.append('<table>')
+            issues.append('<table class="table table-bordered table-striped>')
             issues.append('<thead>')
             issues.append('<tr>')
 

@@ -257,17 +257,42 @@ in the workflow.
 Output Formats
 ==============
 
+CSV (Roadmunk)
+--------------
+
 The default output (CSV) may be further parsed by your own scripts. However, it was created to conform with the
-`Roadmunk`_ application, which is like a Swiss army knife for displaying road map data.
+excellent `Roadmunk`_ application, which is like a Swiss army knife for displaying road map data.
+
+.. _Roadmunk: http://roadmunk.com
+
+HTML
+----
+
+HTML output is for `Bootstrap 3`_ and includes classes for ``table-bordered`` and ``table-striped``. If you don't want
+this, use the ``--no-header`` switch.
+
+.. _Bootstrap 3: http://getbootstrap.com
+
+Markdown
+--------
 
 Markdown output uses the format for the ``pipe_tables`` extension of `Pandoc`_. The output is *not* pretty, but should
 parse well using Pandoc.
 
+.. _Pandoc: http://pandoc.org/MANUAL.html#tables
+
+ReStructuredText
+----------------
+
 ReStructuredText output uses the `csv-table`_ directive.
 
 .. _csv-table: http://docutils.sourceforge.net/docs/ref/rst/directives.html#id4
-.. _Pandoc: http://pandoc.org/MANUAL.html#tables
-.. _Roadmunk: http://roadmunk.com
+
+Text
+----
+
+The final format available is plain text. This simply outputs the issue title, the URL, and a line feed for each issue.
+This is useful for creating a ``TODO.txt`` file.
 
 holdproject
 ===========

@@ -2,6 +2,15 @@
 Developer's Reference
 *********************
 
+New Command Checklist
+=====================
+
+1. Create the command in the ``cli.py`` module.
+2. Create a corresponding file in the ``sandbox/``.
+3. Update ``commands.rst``.
+4. Update *The Commands* section of the ``README.markdown``.
+5. Add any new modules to ``reference.rst``.
+
 Command Line Module (CLI)
 =========================
 
@@ -87,6 +96,12 @@ Exceptions
 .. automodule:: library.exceptions
     :members:
 
+Issues
+------
+
+.. automodule:: library.issues
+    :members:
+
 Organizations
 -------------
 
@@ -115,6 +130,12 @@ Releases
 --------
 
 .. automodule:: library.releases
+    :members:
+
+Repos
+-----
+
+.. automodule:: library.repos
     :members:
 
 Shortcuts

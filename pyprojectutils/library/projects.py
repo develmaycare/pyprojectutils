@@ -4,7 +4,7 @@ from collections import OrderedDict
 import commands
 import os
 from .config import Config, Section
-from .constants import DEVELOPER_CODE, DEVELOPER_NAME, ENVIRONMENTS, PROJECT_HOME
+from .constants import DEVELOPER_CODE, DEVELOPER_NAME, ENVIRONMENTS, PROJECT_ARCHIVE, PROJECT_HOME
 from .organizations import Business, Client
 from .packaging import PackageConfig
 from .shortcuts import parse_template, read_file, write_file, print_info
@@ -233,6 +233,7 @@ class Project(Config):
         :type path: str
 
         """
+        self.branch = None
         self.business = None
         self.category = None or "uncategorized"
         self.client = None
@@ -250,6 +251,7 @@ class Project(Config):
         self.tags = list()
         self.title = None
         self.type = "project"
+        self.version = "0.1.0-d"
         self._requirements = list()
 
         # Handle config file. We have to do this here in order to call super() below.
@@ -276,6 +278,24 @@ class Project(Config):
 
         """
         return os.path.exists(self.root)
+
+    def get_archive_path(self):
+        """Get the path to where this project should be archived.
+
+        :rtype: str
+        :raises: ValueError
+
+        .. note::
+            This path does *no* include the project name.
+
+        """
+        if self.has_client:
+            return os.path.join(PROJECT_ARCHIVE, "clients", self.client.code)
+        elif self.has_business:
+            return os.path.join(PROJECT_ARCHIVE, "business")
+        else:
+            raise ValueError("No business or client defined. It's not possible to derive a path. I can't work under "
+                             "these conditions.")
 
     def get_business(self):
         """Get the project business instance.
@@ -619,6 +639,8 @@ class Project(Config):
 
         """
         if self.path_exists(".git"):
+
+            # Determine whether the repo is dirty.
             # See http://stackoverflow.com/a/5737794/241720
             cmd = '(cd %s && test -z "$(git status --porcelain)")' % self.root
             (status, output) = commands.getstatusoutput(cmd)
@@ -627,8 +649,14 @@ class Project(Config):
             else:
                 self.is_dirty = False
 
+            # Get the current branch name.
+            (status, output) = commands.getstatusoutput("(cd %s && git rev-parse --abbrev-ref HEAD)" % self.root)
+            self.branch = output.strip()
+
             return "git"
         elif self.path_exists(".hg"):
+
+            # Determine whether the repo is dirty.
             # See http://stackoverflow.com/a/11012582/241720
             cmd = '(cd %s && hg identify --id | grep --quiet + ; echo $?)' % self.root
             (status, output) = commands.getstatusoutput(cmd)
@@ -636,6 +664,10 @@ class Project(Config):
                 self.is_dirty = True
             else:
                 self.is_dirty = False
+
+            # Get the current branch name.
+            (status, output) = commands.getstatusoutput("hg branch")
+            self.branch = output.strip()
 
             return "hg"
         elif self.path_exists(".svn"):
@@ -646,13 +678,15 @@ class Project(Config):
             else:
                 self.is_dirty = False
 
+            # TODO: Parse output of svn info to get the current branch if possible.
+
             return "svn"
         else:
             return None
 
     def _load_section(self, name, values):
         """Overridden to add business, client, and project section values to the current instance."""
-        if name == "buiness":
+        if name == "business":
             section = Business(values.pop('name'), **values)
             setattr(self, name, section)
         elif name == "client":
@@ -677,7 +711,7 @@ class Project(Config):
         # Always set version_txt whether it exists or not. This allows it to be created if it does not already exist.
         self.version_txt = os.path.join(self.root, "VERSION.txt")
         if os.path.exists(self.version_txt):
-            self.version = read_file(self.version_txt)
+            self.version = read_file(self.version_txt).strip()
         else:
             self.version = "0.1.0-d"
 

@@ -5,8 +5,8 @@ import sys
 
 sys.path.insert(0, "../pyprojectutils")
 
-from cli import list_projects_command
+from cli import archive_project_command
 
 if __name__ == '__main__':
     sys.argv[0] = re.sub(r'(-script\.pyw|\.exe)?$', '', sys.argv[0])
-    sys.exit(list_projects_command())
+    sys.exit(archive_project_command())

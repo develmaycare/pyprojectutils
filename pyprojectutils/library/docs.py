@@ -1,8 +1,10 @@
 """
-.. versionadded:: 0.17.0-d
+.. versionadded:: 0.24.11-d
 
-We use [Dash](https://kapeli.com/dash) and various online documentation, but some documentation is nice to have on the
-local machine. This may even be extended to cover training materials, e-books, etc.
+We use the excellent `Dash`_ app for documentation, but some documentation is nice to have on the local machine.
+This may even be extended to cover training materials, e-books, etc.
+
+.. _Dash: https://kapeli.com/dash
 
 """
 

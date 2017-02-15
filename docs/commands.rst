@@ -2,33 +2,95 @@
 Commands
 ********
 
+archiveproject
+==============
+
+Place a project in the archive.
+
+.. code-block:: plain
+
+    usage: archiveproject [-h] [--force] [-p= PROJECT_HOME] [-v] [--version] project_name
+
+    positional arguments:
+      project_name          The name of the project to archive.
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      --force               Archive the project even if the repo is dirty. Be
+                            careful!
+      -p= PROJECT_HOME, --path= PROJECT_HOME
+                            Path to where projects are stored. Defaults to
+                            /Users/shawn/Work
+      -v                    Show version number and exit.
+      --version             Show verbose version information and exit.
+
+    We first check to see if the repo is dirty and by default the project cannot be placed in the archive without first
+    committing the changes.
+
+
 bumpversion
 ===========
 
 Increment the version number immediately after checking out a release branch.
 
+.. code-block:: plain
+
     usage: bumpversion [-h] [-b= BUILD] [-M] [-m] [-n= NAME] [-p] [-P= PATH]
-                       [--preview] [-s= STATUS] [-T= TEMPLATE] [-v] [--version]
-                       project_name
+                      [--preview] [-s= STATUS] [-T= TEMPLATE] [-v] [--version]
+                      [project_name]
+
+    positional arguments:
+      project_name          The name of the project. Typically, the directory name
+                            in which the project is stored.
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -b= BUILD, --build= BUILD
+                            Supply build meta data.
+      -M, --major           Increase the major version number when you make
+                            changes to the public API that are backward-
+                            incompatible.
+      -m, --minor           Increase the minor version number when new or updated
+                            functionality has been implemented that does not
+                            change the public API.
+      -n= NAME, --name= NAME
+                            Name your release.
+      -p, --patch           Increase the patch level when backward-compatible bug-
+                            fixes have been implemented.
+      -P= PATH, --path= PATH
+                            The path to where projects are stored. Defaults to
+                            /Users/shawn/Work
+      --preview             Preview the output, but don't make any changes.
+      -s= STATUS, --status= STATUS
+                            Use the status to denote a pre-release version.
+      -T= TEMPLATE, --template= TEMPLATE
+                            Path to the version.py template you would like to use.
+                            Use ? to see the default.
+      -v                    Show version number and exit.
+      --version             Show verbose version information and exit.
+
+
+.. tip::
+    If you omit the ``project_name`` then ``bumpversion`` will attempt to locate the ``VERSION.txt`` file to
+    automatically determine the current project name based on your current working diretory.
 
 When to Use
 -----------
 
-Generally, you want to increment the version number immediately after checking
-out a release branch. However, you may wish to bump the version any time
-during development, especially during early development where the MINOR
-and PATCH versions are changing frequently.
+Generally, you want to increment the version number immediately after checking out a release branch. However, you may
+wish to bump the version any time during development, especially during early development where the MINOR and PATCH
+versions are changing frequently.
 
 Here is an example workflow:
 
 .. code-block:: bash
 
     # Get the current version and check out the next release.
-    versionbump myproject; # get the current version, example 1.2
+    bumpversion myproject; # get the current version, example 1.2
     git checkout -b release-1.3;
 
     # Bump automatically sets the next minor version with a status of d.
-    versionbump myproject -m -s d;
+    bumpversion myproject -m -s d;
 
     # Commit the bump.
     git commit -am "Version Bump";
@@ -89,13 +151,158 @@ release.
 
 The version may be shown to Customers or Users.
 
+checkoutproject
+===============
+
+Check out a project from a source code repository.
+
+.. code-block:: plain
+
+    usage: checkoutproject [-h] [-p= PROJECT_HOME] [-v] [--version]
+                           project_name [provider]
+
+    positional arguments:
+      project_name          The name of the project. Typically, the directory name
+                            in which the project is stored.
+      provider              The SCM provider. This may be a base URL or one of
+                            bitbucket or github.
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -p= PROJECT_HOME, --path= PROJECT_HOME
+                            Path to where projects are stored. Defaults to
+                            /Users/shawn/Work
+      -v                    Show version number and exit.
+      --version             Show verbose version information and exit.
+
+.. note::
+    Only Git repos are currently supported.
+
+Provider is required the first time you run a checkout on the local machine. Afterward, the information is stored for
+the project at ``~/.pyprojectutils/repos/project_name.txt``
+
+If ``bitbucket`` or ``github`` is specified, the ``BITBUCKET_USER`` or ``GITHUB_USER`` environment variables will be
+used to assemble the URL.
+
+You may also specify the ``DEFAULT_SCM`` environment variable to automatically use Bitbucket or GitHub. For example:
+
+.. code-block:: bash
+
+    export BITBUCKET_USER="develmaycare";
+    export GITHUB_USER="develmaycare";
+    export DEFAULT_SCM="github";
+
+The ``DEFAULT_SCM`` itself defaults to GITHUB_USER.
+
+enableproject
+=============
+
+Re-enable a project from hold or archive.
+
+.. code-block:: plain
+
+    usage: enableproject [-h] [-p= PROJECT_HOME] [-v] [--version] project_name
+
+    positional arguments:
+      project_name          The name of the project to restore from hold or
+                            archive.
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -p= PROJECT_HOME, --path= PROJECT_HOME
+                            Path to where projects are stored. Defaults to
+                            /Users/shawn/Work
+      -v                    Show version number and exit.
+      --version             Show verbose version information and exit.
+
+    We first check to see if the repo is dirty and by default the project cannot be placed on hold without first
+    committing the changes.
+
+exportgithub
+============
+
+Export Github milestones and issues.
+
+.. code-block::
+
+    usage: exportgithub [-h] [--format= {csv,html,markdown,rst,txt}]
+                        [-L= LABELS] [-v] [--version]
+                        repo_name [output_file]
+
+    positional arguments:
+      repo_name             Name of the repository.
+      output_file           The file (or path) to which data should be exported.
+                            If omitted, the export goes to STDOUT.
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      --format= {csv,html,markdown,rst,txt}
+                            Output format. Defaults to CSV.
+      -L= LABELS, --label= LABELS
+                            Filter for a specific label.
+      -v                    Show version number and exit.
+      --version             Show verbose version information and exit.
+
+Environment Variables
+=====================
+
+``GITHUB_USER`` and ``GITHUB_PASSWORD`` must be set in your console environment.
+
+Issue Status
+============
+
+We look for labels of ``ready``, ``in progress``, ``on hold``, and ``review ``to determine the issue's current position
+in the workflow.
+
+Output Formats
+==============
+
+CSV (Roadmunk)
+--------------
+
+The default output (CSV) may be further parsed by your own scripts. However, it was created to conform with the
+excellent `Roadmunk`_ application, which is like a Swiss army knife for displaying road map data.
+
+.. _Roadmunk: http://roadmunk.com
+
+HTML
+----
+
+HTML output is for `Bootstrap 3`_ and includes classes for ``table-bordered`` and ``table-striped``. If you don't want
+this, use the ``--no-header`` switch.
+
+.. _Bootstrap 3: http://getbootstrap.com
+
+Markdown
+--------
+
+Markdown output uses the format for the ``pipe_tables`` extension of `Pandoc`_. The output is *not* pretty, but should
+parse well using Pandoc.
+
+.. _Pandoc: http://pandoc.org/MANUAL.html#tables
+
+ReStructuredText
+----------------
+
+ReStructuredText output uses the `csv-table`_ directive.
+
+.. _csv-table: http://docutils.sourceforge.net/docs/ref/rst/directives.html#id4
+
+Text
+----
+
+The final format available is plain text. This simply outputs the issue title, the URL, and a line feed for each issue.
+This is useful for creating a ``TODO.txt`` file.
+
 holdproject
 ===========
 
 Place a project on hold.
 
-    usage: holdproject.py [-h] [--force] [-p= PROJECT_HOME] [-v] [--version]
-                          project_name
+.. code-block:: plain
+
+    usage: holdproject [-h] [--force] [-p= PROJECT_HOME] [-v] [--version]
+                       project_name
 
     positional arguments:
       project_name          The name of the project to place on hold.
@@ -118,6 +325,8 @@ initproject
 ===========
 
 Initialize a project, creating various common files using intelligent defaults. Or at least *some* defaults.
+
+.. code-block:: plain
 
     usage: initproject [-h] [-b= BUSINESS_NAME] [-B= BUSINESS_CODE]
                        [-c= CATEGORY] [--client= CLIENT_NAME]
@@ -168,6 +377,8 @@ lsdependencies
 ==============
 
 List the packages for a given project.
+
+.. code-block:: plain
 
     usage: lspackages [-h]
                       [--env= {base,control,development,testing,staging,live}]
@@ -240,26 +451,70 @@ Several output formats are supported. All are sent to standard out unless a file
 - rst: For ReStructuredText.
 - table (default): Lists the packages in tabular format.
 
+lsdocumentation
+===============
+
+Find, parse, and collect documentation information.
+
+We use the excellent `Dash`_ app for documentation, but some documentation is nice to have on the local machine.
+This may even be extended to cover training materials, e-books, etc.
+
+.. _Dash: https://kapeli.com/dash
+
+..code-block:: plain
+
+    usage: lsdocumentationy [-h] [-a] [-d] [-f= CRITERIA]
+                            [-p= DOCUMENTATION_HOME] [-v] [--version]
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -a, --all             Show documentation even if there is no info.ini file.
+      -d, --disk            Calculate disk space. Takes longer to run.
+      -f= CRITERIA, --filter= CRITERIA
+                            Specify filter in the form of key:value. This may be
+                            repeated. Use ? to list available values.
+      -p= DOCUMENTATION_HOME, --path= DOCUMENTATION_HOME
+                            Path to the documentation library. Defaults to
+                            /Users/shawn/Dropbox/Business/Documentation
+      -v                    Show version number and exit.
+      --version             Show verbose version information and exit.
+
+    FILTERING
+
+    Use the -f/--filter option to by most project attributes:
+
+    - author (partial, case insensitive)
+    - category
+    - description (partial, case insensitive)
+    - name (partial, case insensitive)
+    - publisher (partial, case insensitive)
+    - tag
+    - type
+
+
+
 lsprojects
 ==========
 
-Find, parse, and collect project information.
+List projects managed on the local machine.
 
 .. code-block:: plain
 
-    usage: lsprojects [-h] [-a] [--dirty] [-d] [-f= CRITERIA]
-                      [-n= PROJECT_NAME] [-p= PROJECT_HOME] [-v] [--version]
+    usage: lsprojects [-h] [-a] [--archive] [--branch] [--dirty] [-d]
+                      [-f= CRITERIA] [--hold] [-p= PROJECT_HOME] [-v]
+                      [--version]
 
     optional arguments:
       -h, --help            show this help message and exit
       -a, --all             Show projects even if there is no project.ini file.
+      --archive             Only list projects that are staged for archiving.
+      --branch              Show the current SCM branch name for each project.
       --dirty               Only show projects with dirty repos.
       -d, --disk            Calculate disk space. Takes longer to run.
       -f= CRITERIA, --filter= CRITERIA
                             Specify filter in the form of key:value. This may be
                             repeated. Use ? to list available values.
-      -n= PROJECT_NAME, --name= PROJECT_NAME
-                            Find a project by name and display it's information.
+      --hold                Only list projects that are on hold.
       -p= PROJECT_HOME, --path= PROJECT_HOME
                             Path to where projects are stored. Defaults to
                             /Users/shawn/Work
@@ -351,10 +606,41 @@ projects on hold with the ``holdproject`` command or simply move the project to 
 
 To display projects that are on hold, use the ``--hold`` option if ``lsprojects``.
 
+lsrepos
+=======
+
+List source code repos that have been discovered by the checkoutproject command.
+
+..  code-block:: plain
+
+    usage: lsrepos [-h] [-a] [-f= CRITERIA] [--hold] [-v] [--version]
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -a, --all             List all (even remote) repos.
+      -f= CRITERIA, --filter= CRITERIA
+                            Specify filter in the form of key:value. This may be
+                            repeated. Use ? to list available values.
+      --hold                Only list projects that are on hold.
+      -v                    Show version number and exit.
+      --version             Show verbose version information and exit.
+
+    FILTERING
+
+    Use the -f/--filter option to by most project attributes:
+
+    - name (partial, case insensitive)
+    - project
+    - host (bitbucket, bb, github, gh)
+    - type (git, hg, svn)
+    - user
+
 randompw
 ========
 
 Generate a random password.
+
+.. code-block:: plain
 
     usage: randompw [-h] [--format= [{crypt,md5,plain,htpasswd}]] [--strong]
                     [-U] [-v] [--version]

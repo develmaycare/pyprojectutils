@@ -1,10 +1,20 @@
 import os
 
 __all__ = (
+    "AUTHOR",
     "BASE_ENVIRONMENT",
+    "BITBUCKET_ENABLED",
+    "BITBUCKET_SCM",
+    "BITBUCKET_USER",
+    "BUSINESS",
+    "CLIENT",
     "CONTROL_ENVIRONMENT",
+    "DEFAULT_SCM",
     "DEVELOPMENT",
+    "DEVELOPER_CODE",
+    "DEVELOPER_NAME",
     "DEVELOPMENT_ENVIRONMENT",
+    "DOCUMENTATION_HOME",
     "ENVIRONMENTS",
     "EXIT_ENV",
     "EXIT_INPUT",
@@ -12,15 +22,22 @@ __all__ = (
     "EXIT_OTHER",
     "EXIT_USAGE",
     "EXPERIMENTAL",
+    "GITHUB_ENABLED",
+    "GITHUB_PASSWORD",
+    "GITHUB_SCM",
+    "GITHUB_USER",
     "LICENSE_CHOICES",
-    "PROJECT_HOME",
-    "PROJECTS_ON_HOLD",
-    "TESTING",
-    "TESTING_ENVIRONMENT",
-    "STAGING",
-    "STAGING_ENVIRONMENT",
     "LIVE",
     "LIVE_ENVIRONMENT",
+    "PROJECT_ARCHIVE",
+    "PROJECT_HOME",
+    "PROJECTS_ON_HOLD",
+    "PUBLISHER",
+    "REPO_META_PATH",
+    "STAGING",
+    "STAGING_ENVIRONMENT",
+    "TESTING",
+    "TESTING_ENVIRONMENT",
 )
 
 # The developer name is the name of an individual or company that creates and manages projects. The code is merely a
@@ -37,7 +54,7 @@ AUTHOR = "author"
 PUBLISHER = "publisher"
 
 # Documentation is stored in a specific location.
-DOCUMENTATION_HOME = os.environ.get("DOCUMENTATION_HOME", "~/Business/Documentation")
+DOCUMENTATION_HOME = os.environ.get("DOCUMENTATION_HOME", os.path.expanduser("~/Dropbox/Business/Documentation"))
 
 # Standard stage identifiers.
 EXPERIMENTAL = "experimental"
@@ -73,10 +90,18 @@ EXIT_ENV = 3
 EXIT_OTHER = 4
 
 # Location of projects. User home is automatically expanded.
-PROJECT_HOME = os.environ.get("PROJECT_HOME", "~/Work")
+PROJECT_HOME = os.environ.get("PROJECT_HOME", os.path.expanduser("~/Work"))
+
+# Location of archived projects.
+PROJECT_ARCHIVE = os.environ.get("PROJECT_ARCHIVE", os.path.join(PROJECT_HOME, ".archive"))
 
 # Location of projects on hold.
 PROJECTS_ON_HOLD = os.environ.get("PROJECTS_ON_HOLD", os.path.join(PROJECT_HOME, ".hold"))
+
+# Support for source code repo meta data.
+BITBUCKET_SCM = "bitbucket.org"
+GITHUB_SCM = "github.com"
+REPO_META_PATH = os.environ.get("REPO_META_PATH", os.path.join(PROJECT_HOME, ".repos"))
 
 # License options for the lice command.
 LICENSE_CHOICES = (
@@ -103,3 +128,24 @@ LICENSE_CHOICES = (
     "wtfpl",
     "zlib",
 )
+
+# Bitbucket integration requires a user name and password.
+BITBUCKET_USER = os.environ.get("BITBUCKET_USER", None)
+BITBUCKET_PASSWORD = os.environ.get("BITBUCKET_PASSWORD", None)
+
+if BITBUCKET_USER and BITBUCKET_USER:
+    BITBUCKET_ENABLED = True
+else:
+    BITBUCKET_ENABLED = False
+
+# GitHub integration is only possible if the user sets a user and password in the local environment.
+GITHUB_USER = os.environ.get("GITHUB_USER", None)
+GITHUB_PASSWORD = os.environ.get("GITHUB_PASSWORD", None)
+
+if GITHUB_USER and GITHUB_PASSWORD:
+    GITHUB_ENABLED = True
+else:
+    GITHUB_ENABLED = False
+
+# The default SCM is the user's preferred provider (host) for repos.
+DEFAULT_SCM = os.environ.get("DEFAULT_SCM", "github")

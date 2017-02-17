@@ -5,7 +5,7 @@
 """
 # Imports
 
-from .commands import shell_command
+from .shell import shell_command
 
 
 # Classes

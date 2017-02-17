@@ -491,8 +491,6 @@ This may even be extended to cover training materials, e-books, etc.
     - tag
     - type
 
-
-
 lsprojects
 ==========
 
@@ -500,15 +498,16 @@ List projects managed on the local machine.
 
 .. code-block:: plain
 
-    usage: lsprojects [-h] [-a] [--archive] [--branch] [--dirty] [-d]
-                      [-f= CRITERIA] [--hold] [-p= PROJECT_HOME] [-v]
-                      [--version]
+    usage: lsprojects.py [-h] [-a] [--archive] [--branch] [--color] [--dirty] [-d]
+                         [-f= CRITERIA] [--hold] [-p= PROJECT_HOME] [-v]
+                         [--version]
 
     optional arguments:
       -h, --help            show this help message and exit
       -a, --all             Show projects even if there is no project.ini file.
       --archive             Only list projects that are staged for archiving.
       --branch              Show the current SCM branch name for each project.
+      --color               Display the list in color-coded format.
       --dirty               Only show projects with dirty repos.
       -d, --disk            Calculate disk space. Takes longer to run.
       -f= CRITERIA, --filter= CRITERIA
@@ -532,6 +531,8 @@ List projects managed on the local machine.
     - scm
     - tag
     - type
+
+    The special --hold option may be used to list only projects that are on hold. See the holdproject command.
 
 Format of INI
 -------------
@@ -605,6 +606,17 @@ The ``$PROJECT_HOME`` directory tends to build up a lot of projects, many of whi
 projects on hold with the ``holdproject`` command or simply move the project to ``$PROJECTS_ON_HOLD``.
 
 To display projects that are on hold, use the ``--hold`` option if ``lsprojects``.
+
+Color Coding
+------------
+
+The ``--color`` option provides additional visual cues for the status of a project. The color is assigned in the
+following order:
+
+- red: An error occurred while finding or parsing project information.
+- yellow: The project's repo is dirty.
+- green: The project is live.
+- cyan: The project has an unknown status.
 
 lsrepos
 =======

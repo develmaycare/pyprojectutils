@@ -687,10 +687,20 @@ class Project(Config):
     def _load_section(self, name, values):
         """Overridden to add business, client, and project section values to the current instance."""
         if name == "business":
-            section = Business(values.pop('name'), **values)
+            try:
+                organization_name = values.pop("name")
+            except KeyError:
+                organization_name = "Unknown"
+
+            section = Business(organization_name, **values)
             setattr(self, name, section)
         elif name == "client":
-            section = Client(values.pop('name'), **values)
+            try:
+                organization_name = values.pop("name")
+            except KeyError:
+                organization_name = "Unknown"
+
+            section = Client(organization_name, **values)
             setattr(self, name, section)
         elif name == "project":
             for key in values.keys():

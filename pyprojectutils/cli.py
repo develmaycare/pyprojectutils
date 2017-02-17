@@ -9,6 +9,7 @@ from datetime_machine import DateTime
 from library.constants import BASE_ENVIRONMENT, BITBUCKET_USER, DEFAULT_SCM, DEVELOPMENT, DOCUMENTATION_HOME, \
     ENVIRONMENTS, EXIT_OK, EXIT_INPUT, EXIT_OTHER, EXIT_USAGE, GITHUB_ENABLED, GITHUB_PASSWORD, GITHUB_USER, \
     LICENSE_CHOICES, PROJECT_ARCHIVE, PROJECT_HOME, PROJECTS_ON_HOLD, REPO_META_PATH
+from library.colors import blue, cyan, green, magenta, red, white, yellow
 from library.docs import Entry as DocumentationEntry
 from library.exceptions import OutputError
 from library.issues import Issue
@@ -1469,6 +1470,13 @@ The special --hold option may be used to list only projects that are on hold. Se
     )
 
     parser.add_argument(
+        "--color",
+        action="store_true",
+        dest="color_enabled",
+        help="Display the list in color-coded format."
+    )
+
+    parser.add_argument(
         "--dirty",
         action="store_true",
         dest="show_dirty",
@@ -1628,6 +1636,59 @@ The special --hold option may be used to list only projects that are on hold. Se
                 scm += " (%s)" % p.branch
             else:
                 scm += " (unknown)"
+
+        line = "%-30s %-20s %-15s %-5s %-10s %-15s %-10s %-4s %-1s" % (
+            title,
+            p.category,
+            p.type,
+            p.org,
+            p.version,
+            p.status,
+            p.disk,
+            scm,
+            config_exists
+        )
+
+        if args.color_enabled:
+            if p.has_error:
+                print(red(line))
+            elif p.is_dirty:
+                print(yellow(line))
+            elif p.status == "live":
+                print(green(line))
+            elif p.status == "unknown":
+                print(cyan(line))
+            else:
+                print(line)
+        else:
+            print(line)
+
+    if len(projects) == 1:
+        label = "result"
+    else:
+        label = "results"
+
+    print("-" * 130)
+    print("")
+    print("%s %s." % (len(projects), label))
+
+    if args.show_all:
+        print("* indicates absence of project.ini file.")
+
+    if error_count >= 1:
+        print("(e) indicates an error parsing the project.ini file. Use the --name switch to find out more.")
+
+    if dirty_count == 1:
+        print("One project with uncommitted changes: %s" % dirty_list[0])
+    elif dirty_count > 1:
+        print("%s projects with uncommitted changes." % dirty_count)
+        for i in dirty_list:
+            print("    cd %s/%s && git st" % (PROJECT_HOME, i))
+    else:
+        print("No projects with uncommitted changes.")
+
+    # Quit.
+    sys.exit(EXIT_OK)
 
 
 def list_documentation_command():

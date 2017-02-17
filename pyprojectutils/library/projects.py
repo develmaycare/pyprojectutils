@@ -181,6 +181,10 @@ def get_projects(path, criteria=None, include_disk=False, show_all=False):
         if not os.path.isdir(project_root):
             continue
 
+        # Ignore dot directories.
+        if project_name[0] == ".":
+            continue
+
         # Skip projects we've already found.
         if project_name in names:
             continue

@@ -4,10 +4,10 @@ from collections import OrderedDict
 import commands
 import os
 from .config import Config, Section
-from .constants import DEVELOPER_CODE, DEVELOPER_NAME, ENVIRONMENTS, PROJECT_ARCHIVE, PROJECT_HOME
+from .constants import DEVELOPER_CODE, DEVELOPER_NAME, ENVIRONMENTS, PROJECT_ARCHIVE, PROJECT_HOME, PROJECTS_ON_HOLD
 from .organizations import Business, Client
 from .packaging import PackageConfig
-from .shortcuts import parse_template, read_file, write_file, print_info
+from .shortcuts import bool_to_yes_no, parse_template, read_file, write_file, print_info
 
 # Constants
 
@@ -57,11 +57,14 @@ __all__ = (
 # Functions
 
 
-def autoload_project(name, include_disk=False, path=None):
+def autoload_project(name, include_cloc=False, include_disk=False, path=None):
     """Attempt to automatically load the project configuration based on the name and path.
 
     :param name: The project name, or possible name.
     :type name: str
+
+    :param include_cloc: Whether to include information on lines of code.
+    :type include_cloc: bool
 
     :param include_disk: Whether to calculate disk space.
     :type include_disk: bool
@@ -72,7 +75,15 @@ def autoload_project(name, include_disk=False, path=None):
     :rtype: Project
     :returns: A ``Project`` instance or ``None`` if the project could not be found.
 
+    .. versionchanged:: 0.27.0-d
+        In versions prior to this one, autoload only looked for the project on the given path or in ``PROJECT_HOME`` if
+        no path was given. Now, an attempt will also be made to find the project in ``PROJECTS_ON_HOLD`` and
+        ``PROJECT_ARCHIVE`` (in that order).
+
+        ``include_cloc`` was also added in support of the ``statproject`` command.
+
     """
+    # Automatically handle different names for the project.
     name = name.lower()
     names = (
         name,
@@ -81,14 +92,32 @@ def autoload_project(name, include_disk=False, path=None):
         name.replace(" ", "_"),
     )
 
+    # Find the project on the given path or in PROJECT_HOME using the provided names.
     for name in names:
         root_path = os.path.join(path or PROJECT_HOME, name)
         if os.path.exists(root_path):
-            project = Project(name, path=path)
-            project.load(include_disk=include_disk)
+            project = Project(root_path)
+            project.load(include_cloc=include_cloc, include_disk=include_disk)
             return project
 
-    return Project(name, path=path)
+    # If the project is not found above attempt to find it in PROJECTS_ON_HOLD.
+    for name in names:
+        root_path = os.path.join(PROJECTS_ON_HOLD, name)
+        if os.path.exists(root_path):
+            project = Project(root_path)
+            project.load(include_cloc=include_cloc, include_disk=include_disk)
+            return project
+
+    # Last, looking the PROJECT_ARCHIVE.
+    for name in names:
+        root_path = os.path.join(PROJECT_ARCHIVE, name)
+        if os.path.exists(root_path):
+            project = Project(root_path)
+            project.load(include_cloc=include_cloc, include_disk=include_disk)
+            return project
+
+    # If no project is found, we will still return a project instance.
+    return Project(name)
 
 
 def get_clients(path):
@@ -166,6 +195,9 @@ def get_projects(path, criteria=None, include_disk=False, show_all=False):
         When filtering criteria includes ``name`` or ``description``, these are handled using partial rather than full
         matching. The matching is also case insensitive.
 
+    .. versionchanged:: 0.27.0-d
+        Updated for new signature of :py:class:`Project` init.
+
     """
     names = list()
     projects = list()
@@ -175,10 +207,10 @@ def get_projects(path, criteria=None, include_disk=False, show_all=False):
     for project_name in entries:
 
         # Get the project root path.
-        project_root = os.path.join(path, project_name)
+        root_path = os.path.join(path, project_name)
 
         # Projects are always stored as sub directories of path.
-        if not os.path.isdir(project_root):
+        if not os.path.isdir(root_path):
             continue
 
         # Ignore dot directories.
@@ -190,7 +222,7 @@ def get_projects(path, criteria=None, include_disk=False, show_all=False):
             continue
 
         # Load the project.
-        project = Project(project_name, path)
+        project = Project(root_path)
         project.load(include_disk=include_disk)
         # print(project)
 
@@ -227,14 +259,14 @@ def get_projects(path, criteria=None, include_disk=False, show_all=False):
 
 class Project(Config):
 
-    def __init__(self, name, path=None):
+    def __init__(self, path):
         """Initialize a project object.
-
-        :param name: The name of the project.
-        :type name: str
 
         :param path: The path to the project.
         :type path: str
+
+        .. versionchanged:: 0.27.0-d
+            The ``name`` parameter was removed. It is now derived from the base name of the ``path``.
 
         """
         self.branch = None
@@ -243,19 +275,31 @@ class Project(Config):
         self.client = None
         self.config_exists = None
         self.description = None
+        self.description_exists = None
         self.disk = "TBD"
+        self.gitignore_exists = None
         self.is_dirty = None
         self.is_loaded = False
+        self.languages = dict()
         self.license = None
-        self.name = name
+        self.license_exists = None
+        self.makefile_exists = None
+        self.manifest_exists = None
+        self.name = os.path.basename(path)
         self.org = "Unknown"
-        self.root = os.path.join(path or PROJECT_HOME, name)
+        self.readme_exists = None
+        self.requirements_exists = None
+        self.root = path
         self.scm = None
+        self.setup_exists = None
         self.status = "unknown"
         self.tags = list()
         self.title = None
+        self.total_directories = None
+        self.total_files = None
         self.type = "project"
         self.version = "0.1.0-d"
+        self.version_exists = None
         self._requirements = list()
 
         # Handle config file. We have to do this here in order to call super() below.
@@ -508,8 +552,11 @@ class Project(Config):
 
         return True
 
-    def load(self, include_disk=False):
+    def load(self, include_cloc=False, include_disk=False):
         """Load the project.
+
+        :param include_cloc: Whether to include information on lines of code.
+        :type include_cloc: bool
 
         :param include_disk: Whether to calculate disk usage.
         :type include_disk: bool
@@ -517,6 +564,9 @@ class Project(Config):
         :rtype: bool
         :returns: Returns ``True`` if the project was found and loaded successful. This also sets ``is_loaded`` to
                   ``True``.
+
+        .. versionchanged: 0.27.0-d
+            Added checks for common meta files. Also added ``include_cloc`` parameter.
 
         """
         # We can't do anything if the project root doesn't exist.
@@ -540,6 +590,57 @@ class Project(Config):
         # Calculate disk space.
         if include_disk:
             self.disk = self._get_disk()
+
+        # Determine if various meta files exist.
+        self.description_exists = self.path_exists("DESCRIPTION.txt")
+        self.gitignore_exists = self.path_exists(".gitignore")
+        self.license_exists = self.path_exists("LICENSE.txt")
+        self.makefile_exists = self.path_exists("Makefile")
+        self.manifest_exists = self.path_exists("MANIFEST.in")
+        self.readme_exists = self.path_exists("README.markdown")
+        self.requirements_exists = self.path_exists("requirements.pip")
+        self.setup_exists = self.path_exists("setup.py")
+        self.version_exists = self.path_exists("VERSION.txt")
+
+        # Get the number of files and directories.
+        command = 'tree | tail -1 | awk -F "," ' + "'{print $1}' | " + 'awk -F " " ' + "'{print $1}'"
+        status, output = commands.getstatusoutput("cd %s && %s" % (self.root, command))
+        self.total_directories = output.strip()
+
+        command = 'tree | tail -1 | awk -F "," ' + "'{print $2}' | " + 'awk -F " " ' + "'{print $1}'"
+        status, output = commands.getstatusoutput("cd %s && %s" % (self.root, command))
+        self.total_files = output.strip()
+
+        # Get CLOC info.
+        if include_cloc:
+            command = "cloc --csv --quiet %s" % self.root
+            status, output = commands.getstatusoutput(command)
+            for line in output.split("\n"):
+
+                values = line.split(",")
+
+                if values[0] == "":
+                    continue
+
+                if values[0] == "files":
+                    continue
+
+                files = values[0]
+                language = values[1]
+                code = values[4]
+
+                self.languages[language] = (files, code)
+
+        """
+        files, language, blank, comment, code
+        13,CSS,2300,639,14631
+        12,Javascript,828,393,2200
+        9,HTML,72,155,1030
+        13,SASS,19,22,928
+        12,LESS,18,27,907
+        5,XML,0,0,550
+        3,JSON,0,0,3
+        """
 
         return self.is_loaded
 
@@ -609,6 +710,45 @@ class Project(Config):
 
         a.append("")
 
+        return "\n".join(a)
+
+    def to_txt(self):
+        """Convert project attributes to plain text output.
+
+        :rtype: str
+
+        """
+        a = list()
+        a.append("title: %s" % self.title)
+        a.append("config file: %s" % bool_to_yes_no(self.config_exists))
+        a.append("description: %s" % self.description)
+        a.append("description file: %s" % bool_to_yes_no(self.description_exists))
+        a.append("status: %s" % self.status)
+        a.append("disk: %s" % self.disk)
+        a.append("repo: %s" % self.scm)
+        a.append("gitignore: %s" % bool_to_yes_no(self.gitignore_exists))
+        a.append("branch: %s" % self.branch)
+        a.append("dirty: %s" % bool_to_yes_no(self.is_dirty))
+        a.append("category: %s" % self.category)
+        a.append("type: %s" % self.type)
+        a.append("license: %s" % self.license)
+        a.append("license file: %s" % bool_to_yes_no(self.license_exists))
+        a.append("version: %s" % self.version)
+        a.append("version file: %s" % bool_to_yes_no(self.readme_exists))
+        a.append("organization: %s" % self.org)
+        a.append("tags: %s" % ", ".join(self.tags))
+        a.append("manifest: %s" % bool_to_yes_no(self.manifest_exists))
+        a.append("readme: %s" % bool_to_yes_no(self.readme_exists))
+        a.append("requirements: %s" % bool_to_yes_no(self.requirements_exists))
+        a.append("setup: %s" % bool_to_yes_no(self.setup_exists))
+        a.append("makefile: %s" % bool_to_yes_no(self.makefile_exists))
+        a.append("directories: %s" % self.total_directories)
+        a.append("files: %s" % self.total_files)
+        if self.languages:
+            for language, stats in self.languages.items():
+                a.append("%s: %s files, %s lines of code" % (language, stats[0], stats[1]))
+        else:
+            a.append("langauges: None")
         return "\n".join(a)
 
     def _get_disk(self):

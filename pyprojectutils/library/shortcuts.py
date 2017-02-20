@@ -9,6 +9,7 @@ from .exceptions import OutputError
 # Exports
 
 __all__ = (
+    "bool_to_yes_no",
     "debug",
     "find_file",
     "get_input",
@@ -23,6 +24,23 @@ __all__ = (
 )
 
 # Functions
+
+
+def bool_to_yes_no(value):
+    """Convert a boolean (or ``None``) to a yes/no string.
+
+    :param value: The value to be converted.
+    :type value: bool
+
+    :rtype: str
+
+    .. versionadded:: 0.27.0-d
+
+    """
+    if value is True:
+        return "yes"
+    else:
+        return "no"
 
 
 def debug(location, message, line=None):

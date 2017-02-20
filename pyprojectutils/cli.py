@@ -2293,74 +2293,6 @@ The special --hold option may be used to list only projects that are on hold. Se
     sys.exit(EXIT_OK)
 
 
-def project_status():
-    """Get information on a project."""
-
-    # Define command meta data.
-    __author__ = "Shawn Davis <shawn@develmaycare.com>"
-    __date__ = "2016-12-11"
-    __help__ = """"""
-    __version__ = "0.2.0-d"
-
-    # Initialize the argument parser.
-    parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
-
-    parser.add_argument(
-        "project_name",
-        help="The name of the project. The directory will be created if it does not exist in $PROJECT_HOME",
-    )
-
-    parser.add_argument(
-        "-d",
-        "--disk",
-        action="store_true",
-        dest="include_disk",
-        help="Calculate disk space. Takes longer to run."
-    )
-
-    parser.add_argument(
-        "-p=",
-        "--path=",
-        default=PROJECT_HOME,
-        dest="project_home",
-        help="Path to where projects are stored. Defaults to %s" % PROJECT_HOME
-    )
-
-    # Access to the version number requires special consideration, especially
-    # when using sub parsers. The Python 3.3 behavior is different. See this
-    # answer: http://stackoverflow.com/questions/8521612/argparse-optional-subparser-for-version
-    # parser.add_argument('--version', action='version', version='%(prog)s 2.0')
-    parser.add_argument(
-        "-v",
-        action="version",
-        help="Show version number and exit.",
-        version=__version__
-    )
-    parser.add_argument(
-        "--version",
-        action="version",
-        help="Show verbose version information and exit.",
-        version="%(prog)s" + " %s %s by %s" % (__version__, __date__, __author__)
-    )
-
-    # Parse arguments. Help, version, and usage errors are automatically handled.
-    args = parser.parse_args()
-
-    project = autoload_project(args.project_name, include_disk=args.include_disk, path=args.project_home)
-
-    if not project.is_loaded:
-        print_warning("Could not autoload the project: %s" % args.project_name)
-
-        if project.has_error:
-            print_error("Error: %s" % project.get_error())
-
-        sys.exit(EXIT_OTHER)
-
-    print(project.to_markdown())
-
-    sys.exit(EXIT_OK)
-
-
 def stat_documentation_command():
     """Display information on a specific set of documentation."""
 
@@ -2453,4 +2385,91 @@ Name may be partially matched and is case insensitive.
         print(entry.to_text())
 
     # Quit.
+    sys.exit(EXIT_OK)
+
+
+def stat_project_command():
+    """Get information on a project."""
+
+    # Define command meta data.
+    __author__ = "Shawn Davis <shawn@develmaycare.com>"
+    __date__ = "2017-02-19"
+    __help__ = """"""
+    __version__ = "0.3.0-d"
+
+    # Initialize the argument parser.
+    parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
+
+    parser.add_argument(
+        "project_name",
+        help="The name of the project. The directory will be created if it does not exist in $PROJECT_HOME",
+    )
+
+    parser.add_argument(
+        "--cloc",
+        action="store_true",
+        dest="include_cloc",
+        help="Include information on lines of code. Takes longer to run."
+    )
+
+    parser.add_argument(
+        "--format=",
+        choices=["csv", "markdown", "rst", "txt"],
+        default="txt",
+        dest="output_format",
+        help="Output format. Defaults to plain text."
+    )
+
+    parser.add_argument(
+        "-p=",
+        "--path=",
+        default=PROJECT_HOME,
+        dest="project_home",
+        help="Path to where projects are stored. Defaults to %s" % PROJECT_HOME
+    )
+
+    # Access to the version number requires special consideration, especially
+    # when using sub parsers. The Python 3.3 behavior is different. See this
+    # answer: http://stackoverflow.com/questions/8521612/argparse-optional-subparser-for-version
+    # parser.add_argument('--version', action='version', version='%(prog)s 2.0')
+    parser.add_argument(
+        "-v",
+        action="version",
+        help="Show version number and exit.",
+        version=__version__
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        help="Show verbose version information and exit.",
+        version="%(prog)s" + " %s %s by %s" % (__version__, __date__, __author__)
+    )
+
+    # Parse arguments. Help, version, and usage errors are automatically handled.
+    args = parser.parse_args()
+
+    project = autoload_project(
+        args.project_name,
+        include_cloc=args.include_cloc,
+        include_disk=True, path=args.project_home
+    )
+
+    if not project.is_loaded:
+
+        print_warning("Could not autoload the project: %s" % args.project_name)
+
+        if project.has_error:
+            print_error("Error: %s" % project.get_error())
+
+        sys.exit(EXIT_OTHER)
+
+    if args.output_format == "csv":
+        pass
+    elif args.output_format == "markdown":
+        print(project.to_markdown())
+    elif args.output_format == "rst":
+        pass
+    else:
+        print(project.to_txt())
+
     sys.exit(EXIT_OK)

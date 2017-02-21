@@ -26,11 +26,20 @@ __all__ = (
 # Functions
 
 
-def bool_to_yes_no(value):
+def bool_to_yes_no(value, color_enabled=False, color_no=None, color_yes=None):
     """Convert a boolean (or ``None``) to a yes/no string.
 
     :param value: The value to be converted.
     :type value: bool
+
+    :param color_enabled: Whether to enable color callbacks. Useful for controlling color at run time.
+    :type color_enabled: bool
+
+    :param color_no: Color the word "no".
+    :type color_no: callable
+
+    :param color_yes: Color the word "yes".
+    :type color_yes: callable
 
     :rtype: str
 
@@ -38,9 +47,15 @@ def bool_to_yes_no(value):
 
     """
     if value is True:
-        return "yes"
+        if callable(color_yes) and color_enabled:
+            return color_yes("yes")
+        else:
+            return "yes"
     else:
-        return "no"
+        if callable(color_no) and color_enabled:
+            return color_no("no")
+        else:
+            return "no"
 
 
 def debug(location, message, line=None):

@@ -21,6 +21,7 @@ setup(
     packages=find_packages(),
     install_requires=[
         "semver",
+        "shell_command",
     ],
     dependency_links=[
         "https://github.com/develmaycare/python-datetime-machine.git",

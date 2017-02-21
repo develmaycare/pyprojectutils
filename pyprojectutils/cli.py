@@ -13,7 +13,8 @@ from library.colors import blue, cyan, green, magenta, red, white, yellow
 from library.docs import Entry as DocumentationEntry
 from library.exceptions import OutputError
 from library.issues import Issue
-from library.projects import autoload_project, get_distinct_project_attributes, get_projects, Project
+from library.projects import autoload_project, format_projects_for_csv, format_projects_for_html, \
+    format_projects_for_shell, get_distinct_project_attributes, get_projects, Project
 from library.organizations import BaseOrganization, Business, Client
 from library.passwords import RandomPassword
 from library.releases import Version
@@ -1426,7 +1427,7 @@ def list_projects_command():
     """List projects managed on the local machine."""
 
     __author__ = "Shawn Davis <shawn@develmaycare.com>"
-    __date__ = "2017-02-04"
+    __date__ = "2017-02-21"
     __help__ = """FILTERING
 
 Use the -f/--filter option to by most project attributes:
@@ -1442,7 +1443,7 @@ Use the -f/--filter option to by most project attributes:
 The special --hold option may be used to list only projects that are on hold. See the holdproject command.
 
 """
-    __version__ = "3.1.0-a"
+    __version__ = "4.0.0-a"
 
     # Define options and arguments.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
@@ -1477,6 +1478,13 @@ The special --hold option may be used to list only projects that are on hold. Se
     )
 
     parser.add_argument(
+        "--columns",
+        action="store_true",
+        dest="include_columns",
+        help="Includes columns in CSV and HTML output."
+    )
+
+    parser.add_argument(
         "--dirty",
         action="store_true",
         dest="show_dirty",
@@ -1500,10 +1508,39 @@ The special --hold option may be used to list only projects that are on hold. Se
     )
 
     parser.add_argument(
+        "--format=",
+        choices=["csv", "html", "shell"],
+        default="shell",
+        dest="output_format",
+        help="Output format. Defaults to plain shell."
+    )
+
+    parser.add_argument(
         "--hold",
         action="store_true",
         dest="list_on_hold",
         help="Only list projects that are on hold."
+    )
+
+    parser.add_argument(
+        "--html-classes",
+        default="table table-bordered table-striped",
+        dest="css_classes",
+        help="Table classes to use for HTML output."
+    )
+
+    parser.add_argument(
+        "--html-linked",
+        action="store_true",
+        dest="links_enabled",
+        help="Creates links to documentation or the project root for HTML output."
+    )
+
+    parser.add_argument(
+        "--html-wrapped",
+        action="store_true",
+        dest="wrapped",
+        help="Creates links to documentation or the project root for HTML output."
     )
 
     parser.add_argument(
@@ -1570,10 +1607,55 @@ The special --hold option may be used to list only projects that are on hold. Se
             else:
                 criteria[key] = value
 
+    # Add criteria not included with the --filter option.
+    if args.show_dirty:
+        criteria['is_dirty'] = True
+
     # Print the report heading.
-    heading = "Projects"
+    if args.list_archive:
+        heading = "Archived"
+    elif args.list_on_hold:
+        heading = "On Hold"
+    else:
+        heading = "Active"
+
     if "type" in criteria:
         heading += " (%s)" % criteria['type']
+
+    # Get the rows.
+    projects = get_projects(
+        project_home,
+        criteria=criteria,
+        include_disk=args.include_disk,
+        show_all=args.show_all
+    )
+
+    # Output according to the desired format.
+    output = ""
+    if args.output_format == "csv":
+        output = format_projects_for_csv(projects, include_columns=args.include_columns)
+    elif args.output_format == "html":
+        output = format_projects_for_html(
+            projects,
+            css_classes=args.css_classes,
+            color_enabled=args.color_enabled,
+            heading=heading,
+            include_columns=args.include_columns,
+            links_enabled=args.links_enabled,
+            wrapped=args.wrapped
+        )
+    else:
+        output = format_projects_for_shell(
+            projects,
+            color_enabled=args.color_enabled,
+            heading=heading,
+            show_branch=args.show_branch
+        )
+
+    print(output)
+
+    # Exit.
+    sys.exit(EXIT_OK)
 
     print("=" * 130)
     print(heading)
@@ -2393,9 +2475,9 @@ def stat_project_command():
 
     # Define command meta data.
     __author__ = "Shawn Davis <shawn@develmaycare.com>"
-    __date__ = "2017-02-19"
+    __date__ = "2017-02-21"
     __help__ = """"""
-    __version__ = "0.3.0-d"
+    __version__ = "0.2.0-d"
 
     # Initialize the argument parser.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
@@ -2413,11 +2495,18 @@ def stat_project_command():
     )
 
     parser.add_argument(
+        "--color",
+        action="store_true",
+        dest="color_enabled",
+        help="Highlight errors and warnings."
+    )
+
+    parser.add_argument(
         "--format=",
-        choices=["csv", "markdown", "rst", "txt"],
-        default="txt",
+        choices=["csv", "markdown", "rst", "stat", "txt"],
+        default="stat",
         dest="output_format",
-        help="Output format. Defaults to plain text."
+        help="Output format. Defaults to plain stat."
     )
 
     parser.add_argument(
@@ -2464,12 +2553,14 @@ def stat_project_command():
         sys.exit(EXIT_OTHER)
 
     if args.output_format == "csv":
-        pass
+        print(project.to_csv())
     elif args.output_format == "markdown":
         print(project.to_markdown())
     elif args.output_format == "rst":
-        pass
-    else:
+        print_warning("ReStructure text output has not been implemented.", exit_code=EXIT_OTHER)
+    elif args.output_format == "txt":
         print(project.to_txt())
+    else:
+        print(project.to_stat(color=args.color_enabled))
 
     sys.exit(EXIT_OK)

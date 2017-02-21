@@ -14,6 +14,7 @@ class Config(object):
         self.is_loaded = None
         self.path = path
         self._error = None
+        self._errors = list()
         self._sections = list()
 
     def get_error(self):
@@ -144,6 +145,17 @@ class Section(object):
 
         """
         return self._context.copy()
+
+    def has_attribute(self, name):
+        """Determine whether the section has a given attribute.
+
+        :param name: The name of the attribute.
+        :type name: str
+
+        :rtype: bool
+
+        """
+        return self._context.has_key(name)
 
     def to_markdown(self):
         """Convert the section to Markdown.

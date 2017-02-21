@@ -1,3 +1,4 @@
 semver
 git+https://github.com/develmaycare/python-datetime-machine.git
 git+https://github.com/PyGithub/PyGithub.git
+shell_command

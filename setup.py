@@ -56,7 +56,7 @@ setup(
           'initproject = pyprojectutils.cli:init_project_command',
           'lsprojects = pyprojectutils.cli:list_projects_command',
           'randompw = pyprojectutils.cli:generate_password',
-          'statproject = pyprojectutils.cli:project_status',
+          'statproject = pyprojectutils.cli:stat_project_command',
       ],
     },
 )

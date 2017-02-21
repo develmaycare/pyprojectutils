@@ -9,6 +9,7 @@ from .exceptions import OutputError
 # Exports
 
 __all__ = (
+    "bool_to_yes_no",
     "debug",
     "find_file",
     "get_input",
@@ -23,6 +24,38 @@ __all__ = (
 )
 
 # Functions
+
+
+def bool_to_yes_no(value, color_enabled=False, color_no=None, color_yes=None):
+    """Convert a boolean (or ``None``) to a yes/no string.
+
+    :param value: The value to be converted.
+    :type value: bool
+
+    :param color_enabled: Whether to enable color callbacks. Useful for controlling color at run time.
+    :type color_enabled: bool
+
+    :param color_no: Color the word "no".
+    :type color_no: callable
+
+    :param color_yes: Color the word "yes".
+    :type color_yes: callable
+
+    :rtype: str
+
+    .. versionadded:: 0.27.0-d
+
+    """
+    if value is True:
+        if callable(color_yes) and color_enabled:
+            return color_yes("yes")
+        else:
+            return "yes"
+    else:
+        if callable(color_no) and color_enabled:
+            return color_no("no")
+        else:
+            return "no"
 
 
 def debug(location, message, line=None):

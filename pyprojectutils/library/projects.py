@@ -8,7 +8,7 @@ from .constants import DEVELOPER_CODE, DEVELOPER_NAME, ENVIRONMENTS, PROJECT_ARC
 from .organizations import Business, Client
 from .packaging import PackageConfig
 from .shell import Command
-from .shortcuts import bool_to_yes_no, parse_template, read_file, write_file, print_info
+from .shortcuts import bool_to_yes_no, find_file, parse_template, read_file, write_file, print_info
 
 # Constants
 
@@ -74,7 +74,7 @@ def autoload_project(name, include_cloc=False, include_disk=False, path=None):
     :type path: str
 
     :rtype: Project
-    :returns: A ``Project`` instance or ``None`` if the project could not be found.
+    :returns: ``is_loaded`` will be ``True`` on the ``Project`` instance if the project was found.
 
     .. versionchanged:: 0.27.0-d
         In versions prior to this one, autoload only looked for the project on the given path or in ``PROJECT_HOME`` if
@@ -119,6 +119,56 @@ def autoload_project(name, include_cloc=False, include_disk=False, path=None):
 
     # If no project is found, we will still return a project instance.
     return Project(name)
+
+
+def find_current_project():
+    """Find the project based on the current working directory.
+
+    :rtype: Project || None
+
+    .. versionadded:: 0.27.2-d
+
+    """
+    # We'll attempt to determine the current project based on the current working directory.
+    files = (
+        "project.ini",
+        "VERSION.txt",
+        "DESCRIPTION.txt",
+    )
+    for f in files:
+        file_path = find_file(f, os.getcwd())
+
+        if file_path:
+            project_name = os.path.basename(os.path.dirname(file_path))
+            project_home = os.path.dirname(os.path.dirname(file_path))
+            print("autoload_project(%s, path=%s)" % (project_name, project_home))
+            return autoload_project(project_name, path=project_home)
+
+    return None
+
+
+def find_project(name, path=None):
+    """Find a project using by name, regardless of where the user is in the current directory structure.
+
+    :param name: The name of the project.
+    :type name: str
+
+    :param path: The path to search. By default, ``PROJECT_HOME``, ``PROJECTS_ON_HOLD``, and ``PROJECT_ARCHIVE`` are
+                 searched (in that order).
+    :type path: str
+
+    :rtype: Project
+    :returns: A ``Project`` instance or ``None`` if the project could not be found.
+
+    .. versionadded:: 0.27.2-d
+
+    """
+    # If a path is given, we will only look for the project on that path. Otherwise, let autload_project() do it's
+    # thing.
+    if path:
+        return autoload_project(name, path=path)
+    else:
+        return autoload_project(name)
 
 
 def get_clients(path):

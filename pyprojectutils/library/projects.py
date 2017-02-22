@@ -1419,7 +1419,6 @@ class Project(Config):
 
             # Determine whether the repo is dirty.
             # See http://stackoverflow.com/a/5737794/241720
-            # cmd = '(cd %s && test -z "$(git status --porcelain)")' % self.root
             command = Command('cd %s && git status --porcelain' % self.root)
             command.run()
 
@@ -1429,7 +1428,7 @@ class Project(Config):
                 self.is_dirty = False
 
             # Get the current branch name.
-            command = Command("git rev-parse --abbrev-ref HEAD", path=self.root)
+            command = Command("cd %s && git rev-parse --abbrev-ref HEAD" % self.root)
             if command.run():
                 self.branch = command.output
             else:

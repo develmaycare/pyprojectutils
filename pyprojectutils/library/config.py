@@ -46,6 +46,17 @@ class Config(object):
         """
         return self._error is not None
 
+    def has_section(self, name):
+        """Determine whether the configuration has a given section.
+
+        :param name: The name of the section.
+        :type name: str
+
+        :rtype: bool
+
+        """
+        return name in self._sections
+
     def load(self):
         """Attempt to load configuration from the current given path.
 
@@ -63,9 +74,9 @@ class Config(object):
 
         try:
             ini.read(self.path)
-        except ParsingError, e:
+        except ParsingError as e:
             self.is_loaded = False
-            self._error = e
+            self._error = e.message
             return False
 
         # Iterate through the sections.
@@ -155,7 +166,7 @@ class Section(object):
         :rtype: bool
 
         """
-        return self._context.has_key(name)
+        return name in self._context
 
     def to_markdown(self):
         """Convert the section to Markdown.

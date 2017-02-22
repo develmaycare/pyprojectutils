@@ -228,6 +228,24 @@ class Repo(Config):
         # TODO: Implement command support for SVN and HG.
         return "git clone git@%s:%s/%s.git" % (self.host, self.user, self.name)
 
+    def get_url(self):
+        """Get the URL of the repo.
+
+        :rtype: str
+
+        """
+        if self.host in ("bitbucket.org", "github.com"):
+            return "https://%s/%s/%s" % (self.host, self.user, self.name)
+        elif self.host == "codebasehq":
+            # https://ptltd.codebasehq.com/projects/basis-hr/repositories/basishr_app/tree/master
+            return "https://%s/projects/%s/repositories/%s/tree/master" % (
+                self.host,
+                self.user,
+                self.project
+            )
+        else:
+            return "https://%s/%s" % (self.host, self.name)
+
     def to_string(self):
 
         a = list()
@@ -242,6 +260,11 @@ class Repo(Config):
         output += super(Repo, self).to_string()
 
         return output
+
+    @property
+    def url(self):
+        """Alias of ``get_url()``."""
+        return self.get_url()
 
     def _load_section(self, name, values):
         """Overridden to deal with repo section values to the current instance."""

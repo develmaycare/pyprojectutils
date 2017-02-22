@@ -441,7 +441,7 @@ def bump_version_command():
     """Increment the version number immediately after checking out a release branch."""
 
     __author__ = "Shawn Davis <shawn@develmaycare.com>"
-    __date__ = "2017-02-04"
+    __date__ = "2017-02-22"
     __help__ = """NOTES
 
 This command is based upon [Semantic Versioning](http://semver.org)
@@ -449,7 +449,7 @@ This command is based upon [Semantic Versioning](http://semver.org)
 If you omit the ``project_name`` then ``bumpversion`` will attempt to locate the ``VERSION.txt`` file to determine the
 current project name.
     """
-    __version__ = "0.14.0-d"
+    __version__ = "0.14.1-d"
 
     # Define options and arguments.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
@@ -504,7 +504,7 @@ current project name.
         "-P=",
         "--path=",
         default=PROJECT_HOME,
-        dest="path",
+        dest="project_home",
         help="The path to where projects are stored. Defaults to %s" % PROJECT_HOME
     )
 
@@ -569,13 +569,19 @@ current project name.
             print_error("Could not determine project name based on location of exiting VERSION.txt.", EXIT_INPUT)
 
     # Get the project. Make sure it exists.
-    project = Project(project_name, args.path)
-    if not project.exists:
-        print("Project does not exist: %s" % project.name)
-        sys.exit(EXIT_INPUT)
+    project = autoload_project(
+        project_name,
+        path=args.project_home
+    )
 
-    # Load the project.
-    project.load()
+    if not project.is_loaded:
+
+        print_warning("Could not autoload the project: %s" % args.project_name)
+
+        if project.has_error:
+            print_error("Error: %s" % project.get_error())
+
+        sys.exit(EXIT_OTHER)
 
     # Initialize version instance.
     version = Version(project.version)
@@ -2540,7 +2546,8 @@ def stat_project_command():
     project = autoload_project(
         args.project_name,
         include_cloc=args.include_cloc,
-        include_disk=True, path=args.project_home
+        include_disk=True,
+        path=args.project_home
     )
 
     if not project.is_loaded:

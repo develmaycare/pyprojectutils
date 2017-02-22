@@ -7,6 +7,7 @@ from .config import Config, Section
 from .constants import DEVELOPER_CODE, DEVELOPER_NAME, ENVIRONMENTS, PROJECT_ARCHIVE, PROJECT_HOME, PROJECTS_ON_HOLD
 from .organizations import Business, Client
 from .packaging import PackageConfig
+from .repos import Repo
 from .shell import Command
 from .shortcuts import bool_to_yes_no, find_file, parse_template, read_file, write_file, print_info
 
@@ -368,6 +369,9 @@ def format_projects_for_html(projects, css_classes="table table-bordered table-s
     :type wrapped: bool
 
     :rtype: str
+
+    .. versionchanged:: 0.27.3-d
+        Added support for additional links related to the project.
 
     """
     output = list()
@@ -782,6 +786,16 @@ class Project(Config):
             d[section_name] = getattr(self, section_name)
 
         return d
+
+    def get_repo(self):
+        """Get repo information for the project.
+
+        :rtype: repos.Repo
+
+        .. versionadded:: 0.27.3-d
+
+        """
+        return Repo(self.name, cli=self.scm, project=self.title)
 
     def get_requirements(self, env=None, manager=None):
         """Get project requirements (dependencies).

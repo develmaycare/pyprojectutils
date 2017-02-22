@@ -562,6 +562,13 @@ cannot be gleaned from the file system.
     name = example
     tld = com
 
+    [urls]
+    docs = http://docs.example.net
+    home = http://example.net
+    issues = http://github.com/example/project/issues
+    project = http://waffle.io/example/project
+    scm = http://github.com/example/project
+
 The ``tags``, ``type``, ``scope``, and ``status`` may be whatever you like.
 
 Sections
@@ -573,6 +580,35 @@ project.
 
 Other sections may be added as you see fit. For example, the ``[domain]``
 section above.
+
+The ``[tools]`` section is an alternative to manually specifying certain links in the ``[urls]`` section.
+.. code-block:: ini
+
+    [tools]
+    issues = github
+    project = waffle
+    scm = github
+
+Recognized issue managers:
+
+- Bitbucket
+- Codebase HQ
+- DoneDone
+- Fogbugz
+- GitHub
+
+Recognized project tools:
+
+- Basecamp
+- Codebase HQ
+- Fogbugz
+- Waffle
+
+Recognized SCM tools:
+
+- Bitbucket
+- Github
+- Kiln
 
 Additional Data
 ---------------

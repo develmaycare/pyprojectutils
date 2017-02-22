@@ -209,10 +209,10 @@ class Repo(Config):
             if user:
                 self.host = host
                 self.user = user
-            elif host in ("bitbucket", "bb"):
+            elif host in ("bitbucket.org", "bitbucket", "bb"):
                 self.host = BITBUCKET_SCM
                 self.user = BITBUCKET_USER
-            elif host in ("github", "gh"):
+            elif host in ("github.com", "github", "gh"):
                 self.host = GITHUB_SCM
                 self.user = GITHUB_USER
             else:
@@ -232,6 +232,8 @@ class Repo(Config):
         """Get the URL of the repo.
 
         :rtype: str
+
+        .. versionadded:: 0.27.3-d
 
         """
         if self.host in ("bitbucket.org", "github.com"):

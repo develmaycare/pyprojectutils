@@ -15,8 +15,8 @@
 # Script information.
 AUTHOR="Shawn Davis <shawn@develmaycare.com>";
 SCRIPT=`basename $0`;
-DATE="2017-02-21";
-VERSION="0.2.0-d";
+DATE="2017-02-22";
+VERSION="0.2.1-d";
 
 # Exit codes.
 EXIT_NORMAL=0;
@@ -108,15 +108,15 @@ EOF
 
 # Generate output for active projects.
 echo "<h2>Active</h2>" >> ${output_file};
-lsprojects --format=html --html-linked --color >> ${output_file};
+lsprojects --format=html --columns --html-linked --color >> ${output_file};
 
 # Generate output for inactive projects.
 echo "<h2>On Hold</h2>" >> ${output_file};
-lsprojects --format=html --html-linked --color --hold >> ${output_file};
+lsprojects --format=html --columns --html-linked --color --hold >> ${output_file};
 
 # Generate output for archived projects.
 echo "<h2>Archived</h2>" >> ${output_file};
-lsprojects --format=html --html-linked --color --archive >> ${output_file};
+lsprojects --format=html --columns --html-linked --color --archive >> ${output_file};
 
 # Finish the file.
 cat >> ${output_file} << EOF

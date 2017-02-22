@@ -4,7 +4,8 @@ from collections import OrderedDict
 import os
 from colors import cyan, green, red, yellow
 from .config import Config, Section
-from .constants import DEVELOPER_CODE, DEVELOPER_NAME, ENVIRONMENTS, PROJECT_ARCHIVE, PROJECT_HOME, PROJECTS_ON_HOLD
+from .constants import DEVELOPER_CODE, DEVELOPER_NAME, ENVIRONMENTS, LINK_TYPES, PROJECT_ARCHIVE, PROJECT_HOME, \
+    PROJECTS_ON_HOLD
 from .organizations import Business, Client
 from .packaging import PackageConfig
 from .repos import Repo
@@ -382,6 +383,9 @@ def format_projects_for_html(projects, css_classes="table table-bordered table-s
         output.append(
             '<link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet">'
         )
+        output.append(
+            '<link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">'
+        )
         output.append('</head>')
         output.append('<body>')
         output.append('<div class="container">')
@@ -408,7 +412,7 @@ def format_projects_for_html(projects, css_classes="table table-bordered table-s
         output.append('<thead>')
         output.append('<tr>')
 
-        for column in ("Title", "Category", "Type", "Org", "Version", "Status", "Disk", "SCM", ""):
+        for column in ("Title", "Category", "Type", "Org", "Version", "Status", "Disk", "SCM", "Tools"):
             output.append('<th>%s</th>' % column)
 
         output.append('</tr>')
@@ -480,7 +484,26 @@ def format_projects_for_html(projects, css_classes="table table-bordered table-s
         output.append('<td>%s</td>' % p.status)
         output.append('<td>%s</td>' % p.disk)
         output.append('<td>%s</td>' % scm)
-        output.append('<td>%s</td>' % config_exists)
+
+        tools = list()
+        if links_enabled:
+            tools.append(config_exists)
+            if p.has_section("tools"):
+                for attr, icon in LINK_TYPES:
+                    if p.tools.has_attribute(attr):
+                        tool = getattr(p.tools, attr)
+
+            elif p.has_section("urls"):
+                for attr, icon in LINK_TYPES:
+                    if p.urls.has_attribute(attr):
+                        url = getattr(p.url, attr)
+                        link = '<a href="%s" title="%s">' % (url, attr)
+                        link += '<i class="fa fa-%s" aria-hidden="true"></i></a>' % icon
+                        tools.append(link)
+            else:
+                output.append('<td>%s</td>' % config_exists)
+        else:
+            output.append('<td>%s</td>' % config_exists)
 
         output.append('</tr>')
 

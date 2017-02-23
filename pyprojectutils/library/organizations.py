@@ -6,6 +6,7 @@ Organizations represents the people involved in a project.
 """
 # Imports
 
+from .config import Section
 from .constants import BUSINESS, CLIENT
 
 # Exports
@@ -19,10 +20,29 @@ __all__ = (
 # Classes
 
 
-class BaseOrganization(object):
+class BaseOrganization(Section):
     """Base for organization classes."""
 
-    def __init__(self, name, code=None, contact=None, projects=None):
+    def __init__(self, name, code=None, contact=None, projects=None, **kwargs):
+        """Initialize an organization.
+
+        :param name: Name of the organization.
+        :type name: str
+
+        :param code: Abbreviation or code for the organization.
+        :type code: str
+
+        :param contact: Name of the contact at the organization.
+        :type contact: str
+
+        :param projects: A list of projects associated with the organization.
+        :type projects: list[Project]
+
+        .. versionchanged:: 0.28.0-d
+            ``BaseOrganization`` now inherits from :py:class`config.Section`. Also added kwargs (which are currently
+            ignored) so we can use ``SafeConfigParser`` without error.
+
+        """
         self.code = code or self.get_default_code(name)
         self.contact = contact
         self.name = name

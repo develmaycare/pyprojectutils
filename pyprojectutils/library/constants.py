@@ -27,7 +27,7 @@ __all__ = (
     "GITHUB_SCM",
     "GITHUB_USER",
     "LICENSE_CHOICES",
-    "LINK_TYPES",
+    "LINK_CATEGORIES",
     "LIVE",
     "LIVE_ENVIRONMENT",
     "PROJECT_ARCHIVE",
@@ -151,10 +151,13 @@ else:
 # The default SCM is the user's preferred provider (host) for repos.
 DEFAULT_SCM = os.environ.get("DEFAULT_SCM", "github")
 
-# Control for link types. The first value is the type as recognized by Project and the second is the Font Awesome icon
-# to use for the link.
-LINK_TYPES = (
+# Control for links. The first value is the type as recognized by Project and the second is the Font Awesome icon
+# to use for the link. See http://fontawesome.io/icons/
+LINK_CATEGORIES = (
+    ("chat", "comments"),
+    ("deploy", "rocket"),
     ("docs", "book"),
+    ("help", "question-circle"),
     ("home", "home"),
     ("issues", "bug"),
     ("project", "calendar"),

@@ -4,8 +4,9 @@ from collections import OrderedDict
 import os
 from colors import cyan, green, red, yellow
 from .config import Config, Section
-from .constants import DEVELOPER_CODE, DEVELOPER_NAME, ENVIRONMENTS, LINK_TYPES, PROJECT_ARCHIVE, PROJECT_HOME, \
+from .constants import BITBUCKET_USER, DEVELOPER_CODE, DEVELOPER_NAME, ENVIRONMENTS, GITHUB_USER, LINK_CATEGORIES, PROJECT_ARCHIVE, PROJECT_HOME, \
     PROJECTS_ON_HOLD
+from .links import Link
 from .organizations import Business, Client
 from .packaging import PackageConfig
 from .repos import Repo
@@ -412,7 +413,7 @@ def format_projects_for_html(projects, css_classes="table table-bordered table-s
         output.append('<thead>')
         output.append('<tr>')
 
-        for column in ("Title", "Category", "Type", "Org", "Version", "Status", "Disk", "SCM", "Tools"):
+        for column in ("Title", "Description", "Category", "Type", "Org", "Version", "Status", "Disk", "SCM", "Tools"):
             output.append('<th>%s</th>' % column)
 
         output.append('</tr>')
@@ -468,6 +469,8 @@ def format_projects_for_html(projects, css_classes="table table-bordered table-s
                 url = os.path.join(p.root, "docs/build/html/index.html")
             elif p.path_exists("README.html"):
                 url = os.path.join(p.root, "README.html")
+            # elif p.has_section("urls") and p.urls.has_attribute("project"):
+            #     url = p.urls.project.url
             else:
                 url = p.root
 
@@ -477,6 +480,7 @@ def format_projects_for_html(projects, css_classes="table table-bordered table-s
         else:
             output.append('<td>%s</td>' % p.title)
 
+        output.append('<td>%s</td>' % p.description)
         output.append('<td>%s</td>' % p.category)
         output.append('<td>%s</td>' % p.type)
         output.append('<td>%s</td>' % p.org)
@@ -485,21 +489,18 @@ def format_projects_for_html(projects, css_classes="table table-bordered table-s
         output.append('<td>%s</td>' % p.disk)
         output.append('<td>%s</td>' % scm)
 
-        tools = list()
         if links_enabled:
-            tools.append(config_exists)
-            if p.has_section("tools"):
-                for attr, icon in LINK_TYPES:
-                    if p.tools.has_attribute(attr):
-                        tool = getattr(p.tools, attr)
+            if p.has_section("urls"):
+                links = list()
 
-            elif p.has_section("urls"):
-                for attr, icon in LINK_TYPES:
-                    if p.urls.has_attribute(attr):
-                        url = getattr(p.url, attr)
-                        link = '<a href="%s" title="%s">' % (url, attr)
-                        link += '<i class="fa fa-%s" aria-hidden="true"></i></a>' % icon
-                        tools.append(link)
+                if config_exists:
+                    links.append(config_exists)
+
+                for link in p.urls.get_links():
+                    links.append(link.to_html())
+
+                output.append('<td>%s</td>' % "&nbsp; ".join(links))
+
             else:
                 output.append('<td>%s</td>' % config_exists)
         else:
@@ -510,6 +511,7 @@ def format_projects_for_html(projects, css_classes="table table-bordered table-s
     # Close the table.
     output.append('<tfoot>')
     output.append('<tr>')
+    output.append('<td></td>')
     output.append('<td></td>')
     output.append('<td></td>')
     output.append('<td></td>')
@@ -712,6 +714,9 @@ class Project(Config):
         self.version_exists = None
         self._requirements = list()
 
+        # Set the default slug. This may be overridden if a title is available during load().
+        self.slug = self.name
+
         # Handle config file. We have to do this here in order to call super() below.
         config_path = os.path.join(self.root, "project.ini")
         if os.path.exists(config_path):
@@ -722,7 +727,7 @@ class Project(Config):
         super(Project, self).__init__(config_path)
 
     def __str__(self):
-        return self.title or self.name or "Untitled Project"
+        return self.name
 
     @property
     def exists(self):
@@ -1047,12 +1052,29 @@ class Project(Config):
             self._error = "Project root does not exist: %s" % self.root
             return False
 
+        # Assemble context.
+        context = {
+            'ANSIBLE': "http://docs.ansible.com",
+            'BITBUCKET': "https://bitbucket.org/%s/%s" % (BITBUCKET_USER, self.name),
+            'BITBUCKET_ISSUES': "https://bitbucket.org/%s/%s/issues" % (BITBUCKET_USER, self.name),
+            'BITBUCKET_USER': BITBUCKET_USER,
+            'GITHUB': "https://github.com/%s/%s" % (GITHUB_USER, self.name),
+            'GITHUB_ISSUES': "https://github.com/%s/%s/issues" % (GITHUB_USER, self.name),
+            'GITHUB_USER': GITHUB_USER,
+            'PROJECT_NAME': self.name,
+            'WAFFLE': "https://waffle.io/%s/%s" % (GITHUB_USER, self.name),
+            'WAFFLE_USER': GITHUB_USER,
+        }
+
         # Let the underlying Config do it's thing.
-        super(Project, self).load()
+        super(Project, self).load(context=context)
 
         # Make sure we always have title.
         if not self.title:
             self.title = self.name
+
+        # Set the slug.
+        self.slug = self.title.replace(" ", "-").lower()
 
         # Get meta data.
         self.org = self._get_org()
@@ -1576,6 +1598,10 @@ class Project(Config):
         elif name == "project":
             for key in values.keys():
                 setattr(self, key, values[key])
+        elif name == "urls":
+            section = Tools(name, **values)
+            self._sections.append(name)
+            setattr(self, name, section)
         else:
             super(Project, self)._load_section(name, values)
 
@@ -1607,3 +1633,28 @@ class Project(Config):
             if os.path.exists(i):
                 self.version_py = i
                 break
+
+
+class Tools(Section):
+    """Document the tools (URLs) used by a project."""
+
+    def __init__(self, key, **kwargs):
+        context = {}
+        for category, icon in LINK_CATEGORIES:
+            if category in kwargs:
+                context[category] = kwargs[category]
+
+        super(Tools, self).__init__(key, **context)
+
+    def get_links(self):
+        """Get the link from the tools/urls section.
+
+        :rtype: list
+
+        """
+        a = list()
+        for category, url in self._context.items():
+            link = Link(url, category=category)
+            a.append(link)
+
+        return a

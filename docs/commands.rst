@@ -581,59 +581,63 @@ project.
 Other sections may be added as you see fit. For example, the ``[domain]``
 section above.
 
-The ``[tools]`` section is an alternative to manually specifying certain links in the ``[urls]`` section.
+Tools and Links
+...............
+
+It can be useful to record the tools that are used for a project. Use the ``[urls]`` section to provide links to the
+tools that you use. There are a number of recognized categories that may be specified:
+
+- chat: The instant message tool used by developers.
+- deploy: The tool you use for deployment.
+- docs: The URL for documentation.
+- help: End-user help.
+- home: The official home page of the project or product.
+- issues: The tracking tool for bugs, enhancements, etc.
+- project: The project management tool.
+- roadmap: The tool you use for the product roadmap, or the URL of the roadmap.
+- scm: Source code management tool.
+
 .. code-block:: ini
 
-    [tools]
-    issues = github
-    project = waffle
-    scm = github
+    [urls]
+    docs = https://github.com/develmaycare/pyprojectutils/wiki
+    issues = https://github.com/develmaycare/pyprojectutils/issues
+    project = https://waffle.io/develmaycare/pyprojectutils
+    roadmap = https://roadmunk.com
 
-Recognized issue managers:
+You can use environment variables and project variables as shortcuts:
 
-- Bitbucket
-- Codebase HQ
-- DoneDone
-- Fogbugz
-- GitHub
+.. code-block:: ini
 
-Recognized project tools:
+    [urls]
+    docs = https://github.com/%(GITHUB_USER)s/%(PROJECT_NAME)s/wiki
+    issues = https://github.com/%(GITHUB_USER)s/%(PROJECT_NAME)s/issues
+    project = https://waffle.io/%(GITHUB_USER)s/%(PROJECT_NAME)s
+    roadmap = https://roadmunk.com
 
-- Basecamp
-- Codebase HQ
-- Fogbugz
-- Waffle
+Finally, you may also use shortcuts for common services:
 
-Recognized SCM tools:
+.. code-block:: ini
 
-- Bitbucket
-- Github
-- Kiln
+    [urls]
+    docs = https://github.com/%(GITHUB_USER)s/%(project_name)s/wiki
+    issues = %(GITHUB_ISSUES)s
+    project = %(WAFFLE)s
+    scm = %(GITHUB)s
+    roadmap = https://roadmunk.com
 
-Additional Data
----------------
+Currently recognized:
 
-Additional data may be displayed in the list output and when using the
-``--name`` switch.
+- ``ANSIBLE`` is a link to the `Ansible documentation`_.
+- ``BITBUCKET`` expands to the Bitbucket URL of the project.
+- ``BITBUCKET_ISSUES`` expands to the Bitbucket issues URL of the project.
+- ``GITHUB`` expands to the GitHub URL of the project.
+- ``GITHUB_ISSUES`` expands to the GitHub issues URL of the project.
+- ``PROJECT_NAME`` is the current project's name.
+- ``WAFFLE`` is the URL for the project on `Waffle.io`_
 
-- The SCM and disk usage of the project may be automatically determined.
-- The project tree is obtained with the ``tree`` command.
-
-Generating a README
--------------------
-
-The ``--name`` switch searches for a specific project and (if found) outputs
-project information in `Markdown`_ format:
-
-.. _Markdown: http://daringfireball.net/projects/markdown/
-
-.. code-block:: bash
-
-    cd example_project;
-    lsprojects --name=example_project > README.markdown;
-
-Although you'll likely want to customize the output, this is handy for
-creating (or recreating) a README for the project.
+.. _Ansible documentation: http://docs.ansible.com
+.. _Waffle.io: http://waffle.io
 
 Projects On Hold
 ----------------
@@ -704,3 +708,49 @@ Generate a random password.
 
 We often need to generate passwords automatically. This utility does just
 that. Install pyprojectutils during deployment to create passwords on the fly.
+
+statproject
+===========
+
+Get information about a project.
+
+.. code-block:: plain
+
+    usage: statproject [-h] [--cloc] [--color]
+                       [--format= {csv,markdown,rst,stat,txt}]
+                       [-p= PROJECT_HOME] [-v] [--version]
+                       project_name
+
+    positional arguments:
+      project_name          The name of the project. The directory will be created
+                            if it does not exist in $PROJECT_HOME
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      --cloc                Include information on lines of code. Takes longer to
+                            run.
+      --color               Highlight errors and warnings.
+      --format= {csv,markdown,rst,stat,txt}
+                            Output format. Defaults to plain stat.
+      -p= PROJECT_HOME, --path= PROJECT_HOME
+                            Path to where projects are stored. Defaults to
+                            /Users/shawn/Work
+      -v                    Show version number and exit.
+      --version             Show verbose version information and exit.
+
+
+Generating a README
+-------------------
+
+The ``--name`` switch searches for a specific project and (if found) outputs
+project information in `Markdown`_ format:
+
+.. _Markdown: http://daringfireball.net/projects/markdown/
+
+.. code-block:: bash
+
+    cd example_project;
+    lsprojects --name=example_project > README.markdown;
+
+Although you'll likely want to customize the output, this is handy for
+creating (or recreating) a README for the project.

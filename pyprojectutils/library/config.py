@@ -1,6 +1,7 @@
 # Imports
 
-from ConfigParser import ParsingError, RawConfigParser
+from ConfigParser import InterpolationMissingOptionError, ParsingError, RawConfigParser, SafeConfigParser
+from os import environ as ENVIRONMENT_VARIABLES
 from os.path import exists as path_exists
 from .shortcuts import write_file
 
@@ -57,11 +58,17 @@ class Config(object):
         """
         return name in self._sections
 
-    def load(self):
+    def load(self, context=None):
         """Attempt to load configuration from the current given path.
+
+        :param context: Context to be interpolated.
+        :type context: dict
 
         :rtype: bool
         :returns: Returns ``True`` if the path could be loaded. Also sets ``is_loaded``.
+
+        .. versionchanged:: 0.28.0-d
+            Added ``context`` parameter and support for interpolation in the config.
 
         """
         if not path_exists(self.path):
@@ -70,14 +77,24 @@ class Config(object):
             return False
 
         # Load the config without interpolation.
-        ini = RawConfigParser()
+        if isinstance(context, dict):
+            ini = SafeConfigParser(defaults=context)
 
-        try:
-            ini.read(self.path)
-        except ParsingError as e:
-            self.is_loaded = False
-            self._error = e.message
-            return False
+            try:
+                ini.read(self.path)
+            except ParsingError as e:
+                self.is_loaded = False
+                self._error = e.message
+                return False
+        else:
+            ini = RawConfigParser()
+
+            try:
+                ini.read(self.path)
+            except ParsingError as e:
+                self.is_loaded = False
+                self._error = e.message
+                return False
 
         # Iterate through the sections.
         for section_name in ini.sections():
@@ -86,11 +103,16 @@ class Config(object):
             kwargs = {}
 
             # Tags are handled specifically for all configurations.
-            for key, value in ini.items(section_name):
-                if key == "tags":
-                    kwargs['tags'] = value.split(",")
-                else:
-                    kwargs[key] = value
+            try:
+                for key, value in ini.items(section_name):
+                    if key == "tags":
+                        kwargs['tags'] = value.split(",")
+                    else:
+                        kwargs[key] = value
+            except InterpolationMissingOptionError as e:
+                self.is_loaded = False
+                self._error = e.message
+                return False
 
             # Load the section. This allows section initialization to be customized in child classes.
             self._load_section(section_name, kwargs)

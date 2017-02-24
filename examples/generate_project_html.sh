@@ -15,8 +15,8 @@
 # Script information.
 AUTHOR="Shawn Davis <shawn@develmaycare.com>";
 SCRIPT=`basename $0`;
-DATE="2017-02-22";
-VERSION="0.2.1-d";
+DATE="2017-02-23";
+VERSION="0.2.2-d";
 
 # Exit codes.
 EXIT_NORMAL=0;
@@ -100,6 +100,7 @@ cat >> ${output_file} << EOF
 <html>
 <head>
 <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
 </head>
 <body>
 <div class="container">

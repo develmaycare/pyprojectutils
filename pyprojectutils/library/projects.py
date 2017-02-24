@@ -256,7 +256,10 @@ def get_projects(path, criteria=None, include_disk=False, show_all=False):
     names = list()
     projects = list()
 
-    entries = os.listdir(path)
+    try:
+        entries = os.listdir(path)
+    except OSError:
+        return projects
 
     for project_name in entries:
 

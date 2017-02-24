@@ -7,9 +7,11 @@ Contents:
 .. toctree::
     :maxdepth: 2
 
+    About <about>
     Install <install>
     Commands <commands>
     Reference <reference>
+    Resources <resources>
 
 Indices and tables
 ==================

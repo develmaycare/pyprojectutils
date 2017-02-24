@@ -28,11 +28,12 @@ __all__ = (
 # Functions
 
 
+# noinspection SpellCheckingInspection
 def get_bitbucket_repos():
     """Get repo meta data from the Bitbucket server.
 
     :rtype: list
-    :raises urllib2.HTTPError
+    :raises: urllib2.HTTPError
 
     """
 

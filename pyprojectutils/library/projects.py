@@ -53,9 +53,16 @@ $description
 
 __all__ = (
     "autoload_project",
+    "find_current_project",
+    "find_project",
+    "get_clients",
+    "get_distinct_project_attributes",
     "get_projects",
-    "initialize_project",
+    "format_projects_for_csv",
+    "format_projects_for_html",
+    "format_projects_for_shell",
     "Project",
+    "Tools",
 )
 
 # Functions

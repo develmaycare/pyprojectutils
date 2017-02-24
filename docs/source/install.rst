@@ -6,13 +6,15 @@ This project is still under active development. To install:
 
 .. code-block:: bash
 
-	pip install -e git+https://github.com/bogeymin/pyprojectutils.git#egg=pyprojectutils;
+	pip install -e git+https://github.com/develmaycare/pyprojectutils.git#egg=pyprojectutils;
 
 You can decide whether this should be installed in a virtual environment or as part of the global environment. We
 install it globally so it will work regardless of the active virtual env.
 
 Environment Variables
 =====================
+
+You may set environment variables to support commands and provide default values for certain options.
 
 ``DEVELOPER_CODE``
 ------------------
@@ -40,4 +42,4 @@ This is borrowed from `Virtual Env Wrapper`_ and is the location of where projec
 .. note::
     User home is automatically expanded.
 
-_Virtual Env Wrapper: http://virtualenvwrapper.readthedocs.io
+.. _Virtual Env Wrapper: http://virtualenvwrapper.readthedocs.io

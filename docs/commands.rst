@@ -498,9 +498,9 @@ List projects managed on the local machine.
 
 .. code-block:: plain
 
-    usage: lsprojects.py [-h] [-a] [--archive] [--branch] [--color] [--dirty] [-d]
-                         [-f= CRITERIA] [--hold] [-p= PROJECT_HOME] [-v]
-                         [--version]
+    usage: lsprojects [-h] [-a] [--archive] [--branch] [--color] [--dirty] [-d]
+                      [-f= CRITERIA] [--hold] [-p= PROJECT_HOME] [-v]
+                      [--version]
 
     optional arguments:
       -h, --help            show this help message and exit
@@ -658,6 +658,22 @@ following order:
 - green: The project is live.
 - cyan: The project has an unknown status.
 
+HTML Output
+-----------
+
+The project list will be output when ``--format`` is ``html``. Use the ``--html-linked`` option to automatically create
+links within the output. See below. The ``--html-wrapped`` creates a basic, but nice page from the output using Twitter
+Bootstrap and Font Awesome.
+
+The linking strategy for ``--html-linked`` uses the first valid link it finds to create the title as a link:
+
+- ``docs/build/html/index.html``
+- ``README.html``
+- If ``project`` is set in the ``[urls]`` section, it will be used.
+- If not other link is available, ``file://project_root`` is used.
+
+All links are created with ``target="_blank"``.
+
 lsrepos
 =======
 
@@ -742,15 +758,14 @@ Get information about a project.
 Generating a README
 -------------------
 
-The ``--name`` switch searches for a specific project and (if found) outputs
-project information in `Markdown`_ format:
+The ``--format=markdown`` option produces output in `Markdown`_ format:
 
 .. _Markdown: http://daringfireball.net/projects/markdown/
 
 .. code-block:: bash
 
     cd example_project;
-    lsprojects --name=example_project > README.markdown;
+    statproject --format=markdown > README.markdown;
 
 Although you'll likely want to customize the output, this is handy for
 creating (or recreating) a README for the project.

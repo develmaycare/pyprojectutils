@@ -362,9 +362,9 @@ def format_projects_for_html(projects, css_classes="table table-bordered table-s
     :type include_columns: bool
 
     :param links_enabled: Transform the title into a link. The linking strategy uses the first file it finds, either:
-                          ``docs/build/html/index.html`` or ``README.html``. Failing that, it uses
-                          ``file://project_root``.
-                          All links are created with ``target="_blank"``.
+                          ``docs/build/html/index.html`` or ``README.html``. If ``urls.project`` is set, it will be
+                          used. Failing that, it uses ``file://project_root``. All links are created with
+                          ``target="_blank"``.
     :type links_enabled: bool
 
     :param show_branch: Show SCM branch.
@@ -472,8 +472,8 @@ def format_projects_for_html(projects, css_classes="table table-bordered table-s
                 url = os.path.join(p.root, "docs/build/html/index.html")
             elif p.path_exists("README.html"):
                 url = os.path.join(p.root, "README.html")
-            # elif p.has_section("urls") and p.urls.has_attribute("project"):
-            #     url = p.urls.project.url
+            elif p.has_section("urls") and p.urls.has_attribute("project"):
+                url = p.urls.project
             else:
                 url = p.root
 

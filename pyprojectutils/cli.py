@@ -787,13 +787,10 @@ def enable_project_command():
     """Re-enable a project from hold or archive."""
 
     __author__ = "Shawn Davis <shawn@develmaycare.com>"
-    __date__ = "2017-02-04"
+    __date__ = "2017-02-24"
     __help__ = """
-We first check to see if the repo is dirty and by default the project cannot be placed on hold without first
-committing the changes.
-
     """
-    __version__ = "0.1.0-d"
+    __version__ = "0.1.1-d"
 
     # Define options and arguments.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)

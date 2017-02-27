@@ -22,6 +22,10 @@ tmp.*
 tmp
 """
 
+MANIFEST_TEMPLATE = """recursive-include $app_name/static *
+recursive-include $app_name/templates *
+"""
+
 PROJECT_INI_TEMPLATE = """[project]
 category = $category
 description = $description
@@ -957,6 +961,9 @@ class Project(Config):
 
         .. versionadded:: 0.16.0-d
 
+        .. versionchanged:: 0.29.1-d
+            Added support for MANIFEST.in file.
+
         """
         if not os.path.exists(self.root):
             if display:
@@ -991,6 +998,20 @@ class Project(Config):
 
             command = Command("lice --org=%s --proj=%s %s > %s" % (org, self.title, self.license, license_path))
             command.run()
+
+        if self.has_section("app"):
+            manifest_path = os.path.join(self.root, "MANIFEST.in")
+            if not os.path.exists(manifest_path):
+                print_info("Creating MANIFEST.in file: %s" % manifest_path)
+
+                app = self.get_section("app")
+                context = {
+                    'app_name': app.name,
+                }
+
+                content = parse_template(context, MANIFEST_TEMPLATE)
+
+                write_file(manifest_path, content)
 
         ini_path = os.path.join(self.root, "project.ini")
         if not os.path.exists(ini_path):

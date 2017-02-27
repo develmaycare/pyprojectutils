@@ -180,6 +180,7 @@ LICENSE_CHOICES = (
     "mpl",
     "wtfpl",
     "zlib",
+    "private",
 )
 """License choices used by ``initproject``."""
 

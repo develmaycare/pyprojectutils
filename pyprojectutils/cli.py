@@ -1030,9 +1030,9 @@ def init_project_command():
 
     # Define command meta data.
     __author__ = "Shawn Davis <shawn@develmaycare.com>"
-    __date__ = "2017-02-04"
+    __date__ = "2017-02-27"
     __help__ = """"""
-    __version__ = "0.1.3-d"
+    __version__ = "0.1.4-d"
 
     # Initialize the argument parser.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
@@ -1226,7 +1226,8 @@ def init_project_command():
         client = None
 
     # Create a project instance.
-    project = Project(args.project_name, path=args.project_home)
+    project_root = os.path.join(args.project_home, args.project_name)
+    project = Project(path=project_root)
 
     # Set project values from input.
     project.business = business

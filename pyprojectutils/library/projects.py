@@ -996,8 +996,12 @@ class Project(Config):
             else:
                 org = DEVELOPER_NAME
 
-            command = Command("lice --org=%s --proj=%s %s > %s" % (org, self.title, self.license, license_path))
-            command.run()
+            if self.license == "private":
+                content = "Copyright (C) %s. All rights reserved." % org
+                write_file(license_path, content)
+            else:
+                command = Command("lice --org=%s --proj=%s %s > %s" % (org, self.title, self.license, license_path))
+                command.run()
 
         if self.has_section("app"):
             manifest_path = os.path.join(self.root, "MANIFEST.in")

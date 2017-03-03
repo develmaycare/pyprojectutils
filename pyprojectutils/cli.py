@@ -2132,7 +2132,7 @@ Use the -f/--filter option to by most project attributes:
         print("(e) indicates an error.")
 
     # Quit.
-    sys.exit(EXIT_OK)
+fi    sys.exit(EXIT_OK)
 
 
 def project_parser():

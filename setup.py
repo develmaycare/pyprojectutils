@@ -55,6 +55,7 @@ setup(
           'lspackages = pyprojectutils.cli:list_dependencies_command',
           'initproject = pyprojectutils.cli:init_project_command',
           'lsprojects = pyprojectutils.cli:list_projects_command',
+          'projecthelp = pyprojectutils.cli:project_help_command',
           'randompw = pyprojectutils.cli:generate_password',
           'statproject = pyprojectutils.cli:stat_project_command',
       ],

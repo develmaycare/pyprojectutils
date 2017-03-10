@@ -1058,9 +1058,9 @@ def init_project_command():
 
     # Define command meta data.
     __author__ = "Shawn Davis <shawn@develmaycare.com>"
-    __date__ = "2017-02-27"
+    __date__ = "2017-03-10"
     __help__ = """"""
-    __version__ = "0.1.4-d"
+    __version__ = "0.1.5-d"
 
     # Initialize the argument parser.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
@@ -1170,13 +1170,19 @@ def init_project_command():
     # Parse arguments. Help, version, and usage errors are automatically handled.
     args = parser.parse_args()
 
+    # Get the current project path if "." is given as the project name.
+    if args.project_name == ".":
+        project_name = os.path.basename(os.getcwd())
+    else:
+        project_name = args.project_name
+
     # Get additional options if prompted.
     if args.prompt:
 
         if args.title:
             title = args.title
         else:
-            title = get_input("Title", default=args.project_name)
+            title = get_input("Title", default=project_name)
 
         if args.description:
             description = args.description
@@ -1240,7 +1246,7 @@ def init_project_command():
         license_code = args.license_code or "bsd3"
         project_type = args.project_type or "project"
         status = args.status or DEVELOPMENT
-        title = args.title or args.project_name
+        title = args.title or project_name
 
     # Create instances for business and client.
     if business_name:
@@ -1254,7 +1260,7 @@ def init_project_command():
         client = None
 
     # Create a project instance.
-    project_root = os.path.join(args.project_home, args.project_name)
+    project_root = os.path.join(args.project_home, project_name)
     project = Project(path=project_root)
 
     # Set project values from input.

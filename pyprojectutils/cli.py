@@ -573,11 +573,11 @@ def export_github_command():
 
     # Define meta data.
     __author__ = "Shawn Davis <shawn@develmaycare.com>"
-    __date__ = "2017-02-08"
+    __date__ = "2017-03-09"
     __help__ = """
 We look for labels of ready, in progress, on hold, and review to determine the issue's current position in the workflow.
         """
-    __version__ = "0.2.4-d"
+    __version__ = "0.3.0-d"
 
     # Define options and arguments.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
@@ -811,7 +811,15 @@ We look for labels of ready, in progress, on hold, and review to determine the i
 
         # Abbreviate the description since we don't need every last word for the road map.
         description = i.body.split(".")[0]
-        description += ". Read more: %s" % i.html_url
+
+        if args.output_format == "html":
+            description += '<a href="%s">Read more</a>.' % i.html_url
+        elif args.output_format == "markdown":
+            description += ". [Read more](%s)." % i.html_url
+        elif args.output_format == "rst":
+            description += "`Read more <%s>`_" % i.html_url
+        else:
+            description += ". [Read more](%s)." % i.html_url
 
         # Get extra (static) columns.
         extra_columns = list()

@@ -548,7 +548,7 @@ def format_projects_for_html(projects, css_classes="table table-bordered table-s
     return "\n".join(output)
 
 
-def format_projects_for_shell(projects, color_enabled=False, heading="Projects", show_all=False, show_branch=False):
+def format_projects_for_shell(projects, color_enabled=False, heading="Projects", lines_enabled=False, show_all=False, show_branch=False):
     """Get project list for output to shell.
 
     :param projects: The project list as returned by ``get_projects()``.
@@ -560,6 +560,9 @@ def format_projects_for_shell(projects, color_enabled=False, heading="Projects",
     :param heading: The heading label that appears at the top of the output.
     :type heading: str
 
+    :param lines_enabled: Separate each project with a dotted line.
+    :type lines_enabled: bool
+
     :param show_all: Indicates show all projects was requested.
     :type show_all: bool
 
@@ -569,6 +572,9 @@ def format_projects_for_shell(projects, color_enabled=False, heading="Projects",
     :rtype: str
 
     .. versionadded: 0.27.0-d
+
+    .. versionchanged: 0.31.0-d
+        Added optional ``lines_enabled`` parameter for further visual separation of projects in the list.
 
     """
     output = list()
@@ -593,6 +599,8 @@ def format_projects_for_shell(projects, color_enabled=False, heading="Projects",
     dirty_count = 0
     dirty_list = list()
     error_count = 0
+    line_number = 1
+    total_projects = len(projects)
     for p in projects:
 
         if len(p.title) > 30:
@@ -640,17 +648,24 @@ def format_projects_for_shell(projects, color_enabled=False, heading="Projects",
             if p.has_error:
                 output.append(red(line))
             elif p.is_dirty:
-                output.append(yellow(line))
+                output.append(yellow(line, bold=True))
             elif p.status == "live":
                 output.append(green(line))
             elif p.status == "unknown":
                 output.append(cyan(line))
             else:
                 output.append(line)
+
+            if lines_enabled and line_number < total_projects:
+                output.append("." * 130)
         else:
             output.append(line)
+            if lines_enabled and line_number < total_projects:
+                output.append("." * 130)
 
-    if len(projects) == 1:
+        line_number += 1
+
+    if total_projects == 1:
         label = "result"
     else:
         label = "results"

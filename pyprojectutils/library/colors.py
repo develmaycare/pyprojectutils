@@ -7,28 +7,6 @@ color even when color is requested.
 .. note::
     This was copied from ``fabric/fabric/colors.py`` with just minor modifications.
 
-Functions for wrapping strings in ANSI color codes.
-
-Each function within this module returns the input string ``text``, wrapped
-with ANSI color codes for the appropriate color.
-
-For example, to print some text as green on supporting terminals::
-
-    from fabric.colors import green
-
-    print(green("This text is green!"))
-
-Because these functions simply return modified strings, you can nest them::
-
-    from fabric.colors import red, green
-
-    print(red("This sentence is red, except for " + \
-          green("these words, which are green") + "."))
-
-If ``bold`` is set to ``True``, the ANSI flag for bolding will be flipped on
-for that particular invocation, which usually shows up as a bold or brighter
-version of the original color on most terminals.
-
 """
 import os
 

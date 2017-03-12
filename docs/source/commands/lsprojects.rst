@@ -5,25 +5,37 @@ List projects managed on the local machine.
 
 .. code-block:: none
 
-    usage: lsprojects [-h] [-a] [--archive] [--branch] [--color] [--dirty] [-d]
-                      [-f= CRITERIA] [--hold] [-p= PROJECT_HOME] [-v]
-                      [--version]
+usage: lsprojects [-h] [-a] [--archive] [--branch] [--columns] [--dirty]
+                  [-d] [-f= CRITERIA] [--format= {csv,html,shell}] [--hold]
+                  [--html-classes CSS_CLASSES] [--html-linked]
+                  [--html-wrapped] [--lines] [--no-color]
+                  [-p= PROJECT_HOME] [-v] [--version]
 
     optional arguments:
       -h, --help            show this help message and exit
       -a, --all             Show projects even if there is no project.ini file.
       --archive             Only list projects that are staged for archiving.
       --branch              Show the current SCM branch name for each project.
-      --color               Display the list in color-coded format.
+      --columns             Includes columns in CSV and HTML output.
       --dirty               Only show projects with dirty repos.
       -d, --disk            Calculate disk space. Takes longer to run.
       -f= CRITERIA, --filter= CRITERIA
                             Specify filter in the form of key:value. This may be
                             repeated. Use ? to list available values.
+      --format= {csv,html,shell}
+                            Output format. Defaults to plain shell.
       --hold                Only list projects that are on hold.
+      --html-classes CSS_CLASSES
+                            Table classes to use for HTML output.
+      --html-linked         Creates links to documentation or the project root for
+                            HTML output.
+      --html-wrapped        Creates links to documentation or the project root for
+                            HTML output.
+      --lines               Separate projects with a dotted line in shell output.
+      --no-color            Do NOT display the list in color-coded format.
       -p= PROJECT_HOME, --path= PROJECT_HOME
                             Path to where projects are stored. Defaults to
-                            ~Work
+                            /Users/shawn/Work
       -v                    Show version number and exit.
       --version             Show verbose version information and exit.
 
@@ -141,6 +153,7 @@ Currently recognized:
 - ``BITBUCKET_ISSUES`` expands to the Bitbucket issues URL of the project.
 - ``GITHUB`` expands to the GitHub URL of the project.
 - ``GITHUB_ISSUES`` expands to the GitHub issues URL of the project.
+- ``GITHUB_REPO`` expands to the GitHub path used with ``git clone``.
 - ``PROJECT_NAME`` is the current project's name.
 - ``WAFFLE`` is the URL for the project on `Waffle.io`_
 

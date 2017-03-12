@@ -4,54 +4,15 @@ from collections import OrderedDict
 import os
 from colors import cyan, green, red, yellow
 from .config import Config, Section
-from .constants import BITBUCKET_USER, DEVELOPER_CODE, DEVELOPER_NAME, ENVIRONMENTS, GITHUB_USER, LINK_CATEGORIES, PROJECT_ARCHIVE, PROJECT_HOME, \
-    PROJECTS_ON_HOLD
+from .constants import BITBUCKET_USER, DEVELOPER_CODE, DEVELOPER_NAME, ENVIRONMENTS, GITHUB_USER, GITIGNORE_TEMPLATE, \
+    LINK_CATEGORIES, MANIFEST_TEMPLATE, PROJECT_ARCHIVE, PROJECT_HOME, PROJECT_INI_TEMPLATE, PROJECTS_ON_HOLD, \
+    README_TEMPLATE, REQUIREMENTS_TEMPLATE
 from .links import Link
 from .organizations import Business, Client
 from .packaging import PackageConfig
 from .repos import Repo
 from .shell import Command
-from .shortcuts import bool_to_yes_no, find_file, parse_template, read_file, write_file, print_info
-
-# Constants
-
-GITIGNORE_TEMPLATE = """*.pyc
-.DS_Store
-.idea
-tmp.*
-tmp
-"""
-
-MANIFEST_TEMPLATE = """recursive-include $app_name/static *
-recursive-include $app_name/templates *
-"""
-
-PROJECT_INI_TEMPLATE = """[project]
-category = $category
-description = $description
-status = $status
-title = $title
-type = $type
-
-[business]
-code = $business_code
-name = $business_name
-
-[client]
-code = $client_code
-name = $client_name
-
-[domain]
-name = example
-tld = com
-
-"""
-
-README_TEMPLATE = """# $title
-
-$description
-
-"""
+from .shortcuts import bool_to_yes_no, find_file, parse_jinja_template, parse_template, read_file, write_file, print_info
 
 # Exports
 
@@ -548,7 +509,7 @@ def format_projects_for_html(projects, css_classes="table table-bordered table-s
     return "\n".join(output)
 
 
-def format_projects_for_shell(projects, color_enabled=False, heading="Projects", show_all=False, show_branch=False):
+def format_projects_for_shell(projects, color_enabled=False, heading="Projects", lines_enabled=False, show_all=False, show_branch=False):
     """Get project list for output to shell.
 
     :param projects: The project list as returned by ``get_projects()``.
@@ -560,6 +521,9 @@ def format_projects_for_shell(projects, color_enabled=False, heading="Projects",
     :param heading: The heading label that appears at the top of the output.
     :type heading: str
 
+    :param lines_enabled: Separate each project with a dotted line.
+    :type lines_enabled: bool
+
     :param show_all: Indicates show all projects was requested.
     :type show_all: bool
 
@@ -569,6 +533,9 @@ def format_projects_for_shell(projects, color_enabled=False, heading="Projects",
     :rtype: str
 
     .. versionadded: 0.27.0-d
+
+    .. versionchanged: 0.31.0-d
+        Added optional ``lines_enabled`` parameter for further visual separation of projects in the list.
 
     """
     output = list()
@@ -593,6 +560,8 @@ def format_projects_for_shell(projects, color_enabled=False, heading="Projects",
     dirty_count = 0
     dirty_list = list()
     error_count = 0
+    line_number = 1
+    total_projects = len(projects)
     for p in projects:
 
         if len(p.title) > 30:
@@ -640,17 +609,24 @@ def format_projects_for_shell(projects, color_enabled=False, heading="Projects",
             if p.has_error:
                 output.append(red(line))
             elif p.is_dirty:
-                output.append(yellow(line))
+                output.append(yellow(line, bold=True))
             elif p.status == "live":
                 output.append(green(line))
             elif p.status == "unknown":
                 output.append(cyan(line))
             else:
                 output.append(line)
+
+            if lines_enabled and line_number < total_projects:
+                output.append("." * 130)
         else:
             output.append(line)
+            if lines_enabled and line_number < total_projects:
+                output.append("." * 130)
 
-    if len(projects) == 1:
+        line_number += 1
+
+    if total_projects == 1:
         label = "result"
     else:
         label = "results"
@@ -700,9 +676,10 @@ class Project(Config):
         self.category = None or "uncategorized"
         self.client = None
         self.config_exists = None
-        self.description = None
+        self.description = "TODO: Write a brief description of the project."
         self.description_exists = None
         self.disk = "TBD"
+        self.domain = None
         self.gitignore_exists = None
         self.is_dirty = None
         self.is_loaded = False
@@ -829,6 +806,17 @@ class Project(Config):
 
         return d
 
+    def get_domain(self):
+        """Get the domain instance for the project.
+
+        :rtype: Section
+
+        """
+        if self.has_domain:
+            return self.domain
+
+        return Section("domain", name="example", tld="com")
+
     def get_repo(self):
         """Get repo information for the project.
 
@@ -872,6 +860,33 @@ class Project(Config):
             return content.split("\n")
 
         return list()
+
+    @staticmethod
+    def get_template(name):
+        """Get the content of a project template.
+
+        :param name: The template name.
+        :type name: str
+
+        :rtype: str
+        :raise: ValueError
+        :raises: Raises a value error if ``name`` is not a recognized template.
+
+        """
+        if name == "gitignore":
+            path = GITIGNORE_TEMPLATE
+        elif name == "ini":
+            path = PROJECT_INI_TEMPLATE
+        elif name == "manifest":
+            path = MANIFEST_TEMPLATE
+        elif name == "readme":
+            path = README_TEMPLATE
+        elif name == "requirements":
+            path = REQUIREMENTS_TEMPLATE
+        else:
+            raise ValueError("Unrecognized template name: %s" % name)
+
+        return read_file(path)
 
     def get_tree(self):
         """Get the output of a tree command on the project.
@@ -918,6 +933,10 @@ class Project(Config):
         return self.client is not None
 
     @property
+    def has_domain(self):
+        return self.domain is not None
+
+    @property
     def has_packages_ini(self):
         """Indicates whether the projec has a ``packages.ini`` file.
 
@@ -940,11 +959,15 @@ class Project(Config):
     def has_scm(self):
         return self._get_scm() is not None
 
-    def initialize(self, display=True):
+    def initialize(self, display=True, templates=None):
         """Initialize the project, creating various meta files as needed.
 
         :param display: Display output or not.
         :type display: bool
+
+        :param templates: A dictionary of template names and template paths, like
+                          ``{'readme': "/path/to/readme.md.j2"}``.
+        :type templates: str
 
         This method does the following:
 
@@ -964,27 +987,61 @@ class Project(Config):
         .. versionchanged:: 0.29.1-d
             Added support for MANIFEST.in file.
 
+        .. versionchanged:: 0.32.0-d
+            Added ``templates`` parameter.
+
+            The ``.gitignore``, ``MANIFEST.in``, ``project.ini``, ``README.markdown``, and ``requirements.pip`` files
+            are now generated from template files rather than hard-coded constants. The ``--template`` option was added
+            to the ``initproject`` command to allow templates to be viewed and set when initializing a project.
+
         """
+        # Make sure templates is a dictionary.
+        if not templates:
+            templates = dict()
+
+        # These objects are used in the contexts below.
+        business = None
+        if self.has_business:
+            business = self.get_business()
+
+        client = None
+        if self.has_client:
+            client = self.get_client()
+
+        domain = None
+        if self.has_domain:
+            domain = self.get_domain()
+
+        # Create the root directory as needed.
         if not os.path.exists(self.root):
             if display:
                 print_info("Creating project directory: %s" % self.root)
 
             os.makedirs(self.root)
 
+        # Create the description file.
         description_path = os.path.join(self.root, "DESCRIPTION.txt")
-        if self.description and not os.path.exists(description_path):
+        if not os.path.exists(description_path):
             if display:
                 print_info("Writing DESCRIPTION.txt file: %s" % description_path)
 
             write_file(description_path, self.description)
 
+        # Create the .gitignore file.
         gitignore_path = os.path.join(self.root, ".gitignore")
         if not os.path.exists(gitignore_path):
             if display:
                 print_info("Creating .gitignore file: %s" % gitignore_path)
 
-            write_file(gitignore_path, GITIGNORE_TEMPLATE)
+            context = {
+                'project': self,
+            }
 
+            content = parse_jinja_template(templates.get('gitignore', GITIGNORE_TEMPLATE), context)
+
+            write_file(gitignore_path, content)
+
+        # Generate the license file.
         license_path = os.path.join(self.root, "LICENSE.txt")
         if self.license and not os.path.exists(license_path):
             print_info("Creating %s license file: %s" % (self.license, license_path))
@@ -1003,59 +1060,66 @@ class Project(Config):
                 command = Command('lice --org="%s" --proj="%s" %s > %s' % (org, self.title, self.license, license_path))
                 command.run()
 
-        if self.has_section("app"):
+        # Create a manifest if this is a Django app.
+        if self.category == "django" and self.type == "app":
             manifest_path = os.path.join(self.root, "MANIFEST.in")
             if not os.path.exists(manifest_path):
                 print_info("Creating MANIFEST.in file: %s" % manifest_path)
 
-                app = self.get_section("app")
                 context = {
-                    'app_name': app.name,
+                    'project': self,
                 }
 
-                content = parse_template(context, MANIFEST_TEMPLATE)
+                content = parse_jinja_template(templates.get('manifest', MANIFEST_TEMPLATE), context)
 
                 write_file(manifest_path, content)
 
+        # Create the INI file.
         ini_path = os.path.join(self.root, "project.ini")
         if not os.path.exists(ini_path):
             print_info("Creating default project.ini file: %s" % ini_path)
 
-            business = self.get_business()
-            client = self.get_client()
-
             context = {
-                'business_code': business.code,
-                'business_name': business.name,
-                'category': self.category,
-                'client_code': client.code,
-                'client_name': client.name,
-                'description': self.description or "",
-                'status': self.status or "development",
-                'title': self.title or self.name,
-                'type': self.type,
+                'business': business,
+                'client': client,
+                'domain': domain,
+                'project': self,
             }
             # print context
 
-            content = parse_template(context, PROJECT_INI_TEMPLATE)
+            content = parse_jinja_template(templates.get('ini', PROJECT_INI_TEMPLATE), context)
+
             write_file(ini_path, content)
 
+        # Create the readme file.
         readme_path = os.path.join(self.root, "README.markdown")
         if not os.path.exists(readme_path):
             print_info("Writing default README.markdown file: %s" % readme_path)
+
             context = {
-                'description': self.description or "",
-                'title': self.title or self.name,
+                'business': business,
+                'client': client,
+                'domain': domain,
+                'project': self,
             }
-            content = parse_template(context, README_TEMPLATE)
+
+            content = parse_jinja_template(templates.get('readme', README_TEMPLATE), context)
             write_file(readme_path, content)
 
+        # Create the requirements file.
         requirements_path = os.path.join(self.root, "requirements.pip")
         if not os.path.exists(requirements_path):
-            print_info("Creating empty requirements file.")
-            command = Command("touch %s" % requirements_path)
-            command.run()
+            print_info("Creating requirements file.")
 
+            context = {
+                'project': self,
+            }
+
+            content = parse_jinja_template(templates.get('requirements', REQUIREMENTS_TEMPLATE), context)
+
+            write_file(requirements_path, content)
+
+        # Create the version text file.
         version_path = os.path.join(self.root, "VERSION.txt")
         if not os.path.exists(version_path):
             print_info("Writing initial version file: %s" % version_path)
@@ -1095,6 +1159,7 @@ class Project(Config):
             'BITBUCKET_USER': BITBUCKET_USER,
             'GITHUB': "https://github.com/%s/%s" % (GITHUB_USER, self.name),
             'GITHUB_ISSUES': "https://github.com/%s/%s/issues" % (GITHUB_USER, self.name),
+            'GITHUB_REPO': "git@github.com:%s/%s.git" % (GITHUB_USER, self.name),
             'GITHUB_USER': GITHUB_USER,
             'PROJECT_NAME': self.name,
             'WAFFLE': "https://waffle.io/%s/%s" % (GITHUB_USER, self.name),

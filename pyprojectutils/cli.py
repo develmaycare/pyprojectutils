@@ -1058,9 +1058,9 @@ def init_project_command():
 
     # Define command meta data.
     __author__ = "Shawn Davis <shawn@develmaycare.com>"
-    __date__ = "2017-03-10"
+    __date__ = "2017-03-12"
     __help__ = """"""
-    __version__ = "0.1.5-d"
+    __version__ = "0.2.0-d"
 
     # Initialize the argument parser.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
@@ -1138,6 +1138,14 @@ def init_project_command():
     )
 
     parser.add_argument(
+        "--template=",
+        action="append",
+        dest="templates",
+        help="A template to use instead of the default. Specified as name:path. Recognized templates are: gitignore,"
+             "ini, readme, requirements. Use ? to see the current template."
+    )
+
+    parser.add_argument(
         "--title=",
         dest="title",
         help="Specify the project title. Defaults to the project name."
@@ -1169,6 +1177,38 @@ def init_project_command():
 
     # Parse arguments. Help, version, and usage errors are automatically handled.
     args = parser.parse_args()
+
+    # Deal with templates and template questions.
+    templates = {
+        'gitignore': None,
+        'ini': None,
+        'manifest': None,
+        'readme': None,
+        'requirements': None,
+    }
+    if args.templates:
+        for i in args.templates:
+            template_name, template_path = i.split(":")
+
+            if template_path == "?":
+                try:
+                    print(Project.get_template(template_name))
+                    sys.exit(EXIT_OK)
+                except ValueError:
+                    print_warning("Unrecognized template name: %s" % template_name, EXIT_INPUT)
+
+            if template_name == "gitignore":
+                templates['gitignore'] = template_path
+            elif template_name == "ini":
+                templates['ini'] = template_path
+            elif template_name == "manifest":
+                templates['manifest'] = template_path
+            elif template_name == "readme":
+                templates['readme'] = template_path
+            elif template_name == "requirements":
+                templates['requirements'] = template_path
+            else:
+                print_warning("Unrecognized template name: %s" % template_name, EXIT_INPUT)
 
     # Get the current project path if "." is given as the project name.
     if args.project_name == ".":
@@ -1274,7 +1314,7 @@ def init_project_command():
     project.title = title
 
     # Initialize the project.
-    if project.initialize():
+    if project.initialize(templates=templates):
         sys.exit(EXIT_OK)
     else:
         print_error(project.get_error(), exit_code=EXIT_OTHER)
@@ -1465,7 +1505,7 @@ def list_projects_command():
     """List projects managed on the local machine."""
 
     __author__ = "Shawn Davis <shawn@develmaycare.com>"
-    __date__ = "2017-02-21"
+    __date__ = "2017-03-10"
     __help__ = """FILTERING
 
 Use the -f/--filter option to by most project attributes:
@@ -1481,7 +1521,7 @@ Use the -f/--filter option to by most project attributes:
 The special --hold option may be used to list only projects that are on hold. See the holdproject command.
 
 """
-    __version__ = "4.0.0-a"
+    __version__ = "4.1.0-a"
 
     # Define options and arguments.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
@@ -1508,12 +1548,12 @@ The special --hold option may be used to list only projects that are on hold. Se
         help="Show the current SCM branch name for each project."
     )
 
-    parser.add_argument(
-        "--color",
-        action="store_true",
-        dest="color_enabled",
-        help="Display the list in color-coded format."
-    )
+    # parser.add_argument(
+    #     "--color",
+    #     action="store_true",
+    #     dest="color_enabled",
+    #     help="Display the list in color-coded format."
+    # )
 
     parser.add_argument(
         "--columns",
@@ -1579,6 +1619,20 @@ The special --hold option may be used to list only projects that are on hold. Se
         action="store_true",
         dest="wrapped",
         help="Creates links to documentation or the project root for HTML output."
+    )
+
+    parser.add_argument(
+        "--lines",
+        action="store_true",
+        dest="lines_enabled",
+        help="Separate projects with a dotted line in shell output."
+    )
+
+    parser.add_argument(
+        "--no-color",
+        action="store_true",
+        dest="color_disabled",
+        help="Do NOT display the list in color-coded format."
     )
 
     parser.add_argument(
@@ -1668,6 +1722,11 @@ The special --hold option may be used to list only projects that are on hold. Se
         show_all=args.show_all
     )
 
+    # Deal with color logic.
+    color_enabled = True
+    if args.color_disabled:
+        color_enabled = False
+
     # Output according to the desired format.
     output = ""
     if args.output_format == "csv":
@@ -1676,7 +1735,7 @@ The special --hold option may be used to list only projects that are on hold. Se
         output = format_projects_for_html(
             projects,
             css_classes=args.css_classes,
-            color_enabled=args.color_enabled,
+            color_enabled=color_enabled,
             heading=heading,
             include_columns=args.include_columns,
             links_enabled=args.links_enabled,
@@ -1685,130 +1744,13 @@ The special --hold option may be used to list only projects that are on hold. Se
     else:
         output = format_projects_for_shell(
             projects,
-            color_enabled=args.color_enabled,
+            color_enabled=color_enabled,
             heading=heading,
+            lines_enabled=args.lines_enabled,
             show_branch=args.show_branch
         )
 
     print(output)
-
-    # Exit.
-    sys.exit(EXIT_OK)
-
-    print("=" * 130)
-    print(heading)
-    print("=" * 130)
-
-    # Print the column headings.
-    print(
-        "%-30s %-20s %-15s %-5s %-10s %-15s %-10s %-20s"
-        % ("Title", "Category", "Type", "Org", "Version", "Status", "Disk", "SCM")
-    )
-    print("-" * 130)
-
-    # Add criteria not included with the --filter option.
-    if args.show_dirty:
-        criteria['is_dirty'] = True
-
-    # Print the rows.
-    projects = get_projects(
-        project_home,
-        criteria=criteria,
-        include_disk=args.include_disk,
-        show_all=args.show_all
-    )
-
-    if len(projects) == 0:
-        print("")
-        print("No results.")
-        sys.exit(EXIT_OK)
-
-    dirty_count = 0
-    dirty_list = list()
-    error_count = 0
-    for p in projects:
-
-        if len(p.title) > 30:
-            title = p.title[:27] + "..."
-        else:
-            title = p.title
-
-        if p.config_exists:
-            config_exists = ""
-        else:
-            config_exists = "*"
-
-        if p.has_error:
-            config_exists += " (e)"
-            error_count += 1
-        else:
-            pass
-
-        if p.is_dirty:
-            dirty_count += 1
-            dirty_list.append(p.name)
-            scm = "%s+" % p.scm
-        else:
-            scm = str(p.scm)
-
-        if args.show_branch:
-            if p.branch:
-                scm += " (%s)" % p.branch
-            else:
-                scm += " (unknown)"
-
-        line = "%-30s %-20s %-15s %-5s %-10s %-15s %-10s %-4s %-1s" % (
-            title,
-            p.category,
-            p.type,
-            p.org,
-            p.version,
-            p.status,
-            p.disk,
-            scm,
-            config_exists
-        )
-
-        if args.color_enabled:
-            if p.has_error:
-                print(red(line))
-            elif p.is_dirty:
-                print(yellow(line))
-            elif p.status == "live":
-                print(green(line))
-            elif p.status == "unknown":
-                print(cyan(line))
-            else:
-                print(line)
-        else:
-            print(line)
-
-    if len(projects) == 1:
-        label = "result"
-    else:
-        label = "results"
-
-    print("-" * 130)
-    print("")
-    print("%s %s." % (len(projects), label))
-
-    if args.show_all:
-        print("* indicates absence of project.ini file.")
-
-    if error_count >= 1:
-        print("(e) indicates an error parsing the project.ini file. Use the --name switch to find out more.")
-
-    if dirty_count == 1:
-        print("One project with uncommitted changes: %s" % dirty_list[0])
-    elif dirty_count > 1:
-        print("%s projects with uncommitted changes." % dirty_count)
-        for i in dirty_list:
-            print("    cd %s/%s && git st" % (PROJECT_HOME, i))
-    else:
-        print("No projects with uncommitted changes.")
-
-    # Quit.
-    sys.exit(EXIT_OK)
 
 
 def list_documentation_command():

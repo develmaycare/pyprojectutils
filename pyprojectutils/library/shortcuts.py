@@ -2,6 +2,7 @@
 
 import os
 from string import Template
+from jinja2 import Environment as JinjaEnvironment, FileSystemLoader
 import sys
 from .colors import blue, green, red, yellow
 from .exceptions import OutputError
@@ -186,6 +187,27 @@ def make_dir(path):
 
     os.makedirs(path)
     return False
+
+
+def parse_jinja_template(path, context):
+    """Parse a Jinja 2 template.
+
+    :param path: Path to the template.
+    :type path: str
+
+    :param context: The context to be parsed into the template.
+    :type context: dict
+
+    :rtype: str
+
+    """
+    search_path = os.path.dirname(path)
+    env = JinjaEnvironment(loader=FileSystemLoader(search_path))
+
+    template_name = os.path.basename(path)
+    template = env.get_template(template_name)
+
+    return template.render(**context)
 
 
 def parse_template(context, template):

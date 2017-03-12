@@ -153,6 +153,7 @@ Currently recognized:
 - ``BITBUCKET_ISSUES`` expands to the Bitbucket issues URL of the project.
 - ``GITHUB`` expands to the GitHub URL of the project.
 - ``GITHUB_ISSUES`` expands to the GitHub issues URL of the project.
+- ``GITHUB_REPO`` expands to the GitHub path used with ``git clone``.
 - ``PROJECT_NAME`` is the current project's name.
 - ``WAFFLE`` is the URL for the project on `Waffle.io`_
 

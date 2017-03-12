@@ -1,0 +1,22 @@
+[project]
+category = {{ project.category|defaul("uncategorized") }}
+description = {{ project.description }}
+status = {{ project.status|default("development") }}
+title = {{ project.title }}
+type = {{ project.type|default("project") }}
+
+[business]
+code = {{ business.code }}
+name = {{ business.name }}
+
+{% if client %}
+[client]
+code = {{ client.code }}
+name = {{ client.name }}
+{% endif -%}
+
+{% if domain %}
+[domain]
+name = {{ domain.name }}
+tld = {{ domain.tld }}
+{% endif -%}

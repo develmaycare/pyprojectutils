@@ -1058,9 +1058,9 @@ def init_project_command():
 
     # Define command meta data.
     __author__ = "Shawn Davis <shawn@develmaycare.com>"
-    __date__ = "2017-03-10"
+    __date__ = "2017-03-12"
     __help__ = """"""
-    __version__ = "0.1.5-d"
+    __version__ = "0.2.0-d"
 
     # Initialize the argument parser.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
@@ -1138,6 +1138,14 @@ def init_project_command():
     )
 
     parser.add_argument(
+        "--template=",
+        action="append",
+        dest="templates",
+        help="A template to use instead of the default. Specified as name:path. Recognized templates are: gitignore,"
+             "ini, readme, requirements. Use ? to see the current template."
+    )
+
+    parser.add_argument(
         "--title=",
         dest="title",
         help="Specify the project title. Defaults to the project name."
@@ -1169,6 +1177,38 @@ def init_project_command():
 
     # Parse arguments. Help, version, and usage errors are automatically handled.
     args = parser.parse_args()
+
+    # Deal with templates and template questions.
+    templates = {
+        'gitignore': None,
+        'ini': None,
+        'manifest': None,
+        'readme': None,
+        'requirements': None,
+    }
+    if args.templates:
+        for i in args.templates:
+            template_name, template_path = i.split(":")
+
+            if template_path == "?":
+                try:
+                    print(Project.get_template(template_name))
+                    sys.exit(EXIT_OK)
+                except ValueError:
+                    print_warning("Unrecognized template name: %s" % template_name, EXIT_INPUT)
+
+            if template_name == "gitignore":
+                templates['gitignore'] = template_path
+            elif template_name == "ini":
+                templates['ini'] = template_path
+            elif template_name == "manifest":
+                templates['manifest'] = template_path
+            elif template_name == "readme":
+                templates['readme'] = template_path
+            elif template_name == "requirements":
+                templates['requirements'] = template_path
+            else:
+                print_warning("Unrecognized template name: %s" % template_name, EXIT_INPUT)
 
     # Get the current project path if "." is given as the project name.
     if args.project_name == ".":
@@ -1274,7 +1314,7 @@ def init_project_command():
     project.title = title
 
     # Initialize the project.
-    if project.initialize():
+    if project.initialize(templates=templates):
         sys.exit(EXIT_OK)
     else:
         print_error(project.get_error(), exit_code=EXIT_OTHER)

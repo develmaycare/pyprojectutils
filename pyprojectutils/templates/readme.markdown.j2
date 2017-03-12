@@ -1,0 +1,64 @@
+# {{ project.title }}
+
+{{ project.description }}
+
+{% if project.category == "django" and project.type == "project" -%}
+## Install
+
+Get the source:
+
+    cd $PROJECT_HOME;
+    git clone {{ project.urls.repo }};
+
+Create the environment:
+
+    cd {{ project.name }};
+    mkvirtualenv -a `pwd` -r requirements.pip --prompt="({{ project.title }}) " {{ project.name }}; # or use PyCharm
+
+Create the database:
+
+    createdb -U postgres {{ project.name }};
+
+> Note: Run postgres as needed: ``postgres -D /usr/local/var/postgres``
+
+Run migrations:
+
+    cd source;
+    ./manage.py migrate;
+
+Create the super user:
+
+    {% if domain.name -%}
+    ./manage.py createsuperuser --username=root --email=root@{{ domain.name }}.{{ domain.tld }};
+    {% else -%}
+    ./manage.py createsuperuser --username=root --email=root@{{ project.name }}.app;
+    {% endif -%}
+{% elif project.category == "django" and project.type == "app" -%}
+## Install
+
+To install:
+
+	pip install {{ project.urls.scm }}.git;
+
+Or in your requirements file:
+
+	git+{{ project.urls.scm }}.git
+
+Or in your ``setup.py`` file:
+
+	install_requires=["{{ project.name }}"],
+	dependency_links=[
+        "{{ project.urls.scm }}.git",
+	]
+
+## Settings
+
+Add the app to your ``INSTALLED_APPS``:
+
+	INSTALLED_APPS = [
+		...
+		'{{ project.name }}',
+		...
+	]
+{% else -%}
+{% endif -%}

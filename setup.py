@@ -20,6 +20,7 @@ setup(
     url='https://github.com/develmaycare/pyprojectutils',
     packages=find_packages(),
     install_requires=[
+        "jinja2",
         "semver",
         "shell_command",
     ],

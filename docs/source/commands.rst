@@ -16,5 +16,7 @@ Commands
     lsdocumentation <commands/lsdocumentation>
     lsprojects <commands/lsprojects>
     lsrepos <commands/lsrepos>
+    loremimage <commands/loremimage>
+    loremtext <commands/loremtext>
     randompw <commands/randompw>
     statproject <commands/statproject>

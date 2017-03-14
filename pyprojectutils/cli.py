@@ -38,6 +38,8 @@ __all__ = (
     "list_projects_command",
     "list_documentation_command",
     "list_repos_command",
+    "lorem_image_command",
+    "lorem_text_command",
     "project_help_command",
     "stat_documentation_command",
     "stat_project_command",
@@ -2412,10 +2414,10 @@ def project_help_command():
     """Get help on project commands."""
 
     __author__ = "Shawn Davis <shawn@develmaycare.com>"
-    __date__ = "2017-03-03"
+    __date__ = "2017-03-14"
     __help__ = """Because there are a lot of commands and we forget some of them exist.
     """
-    __version__ = "0.1.0-d"
+    __version__ = "0.2.0-d"
 
     # Define options and arguments.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)

@@ -4,6 +4,7 @@ from argparse import ArgumentParser, RawDescriptionHelpFormatter
 import commands
 from datetime import datetime
 import os
+import random
 import sys
 from datetime_machine import DateTime
 from library.constants import BASE_ENVIRONMENT, BITBUCKET_USER, DEFAULT_SCM, DEVELOPMENT, DOCUMENTATION_HOME, \
@@ -2106,6 +2107,302 @@ Use the -f/--filter option to by most project attributes:
 
     if error_count >= 1:
         print("(e) indicates an error.")
+
+    # Quit.
+    sys.exit(EXIT_OK)
+
+
+def lorem_image_command():
+    """Generate lorem image."""
+
+    __author__ = "Shawn Davis <shawn@develmaycare.com>"
+    __date__ = "2017-03-14"
+    __help__ = """
+    """
+    __version__ = "0.1.0-d"
+
+    # Define image choices.
+    IMAGE_CHOICES = [
+        "abstract",
+        "animals",
+        "business",
+        "cats",
+        "city",
+        "food",
+        "nightlife",
+        "fashion",
+        "people",
+        "nature",
+        "sports",
+        "technics",
+        "transport",
+        "*",
+    ]
+
+    # Define options and arguments.
+    parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
+
+    parser.add_argument(
+        "display_text",
+        default="Lorem Ipsum",
+        help="Text to display for alt and overlay."
+    )
+
+    parser.add_argument(
+        "-C=",
+        "--category=",
+        choices=IMAGE_CHOICES,
+        default="abstract",
+        dest="image_category",
+        help="The category of images to display."
+    )
+
+    parser.add_argument(
+        "--format=",
+        choices=["html", "plain"],
+        default="plain",
+        dest="output_format",
+        help="Choose the format of the output.",
+        nargs="?"
+    )
+
+    parser.add_argument(
+        "-H="
+        "--height=",
+        default=200,
+        dest="image_height",
+        help="Height of the image."
+    )
+
+    parser.add_argument(
+        "-W=",
+        "--width=",
+        default=400,
+        dest="image_width",
+        help="Width of the image."
+    )
+
+    # Access to the version number requires special consideration, especially
+    # when using sub parsers. The Python 3.3 behavior is different. See this
+    # answer: http://stackoverflow.com/questions/8521612/argparse-optional-subparser-for-version
+    # parser.add_argument('--version', action='version', version='%(prog)s 2.0')
+    parser.add_argument(
+        "-v",
+        action="version",
+        help="Show version number and exit.",
+        version=__version__
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        help="Show verbose version information and exit.",
+        version="%(prog)s" + " %s %s by %s" % (__version__, __date__, __author__)
+    )
+
+    # This will display help or input errors as needed.
+    args = parser.parse_args()
+    # print args
+
+    # Deal with random category.
+    image_category = args.image_category
+    if image_category == "*":
+        choices = IMAGE_CHOICES
+        choices.pop(-1)
+
+        image_category = random.choice(choices)
+
+    # Get image height and width.
+    image_height = args.image_height
+    image_width = args.image_width
+
+    # Make sure display text is dash-separated.
+    display_slug = args.display_text.replace(" ", "-")
+
+    # Create the image string.
+    img = "http://lorempixel.com/%s/%s/%s/%s" % (image_width, image_height, image_category, display_slug)
+
+    # Create the output.
+    if args.output_format == "html":
+        output = '<img src="%s" alt="%s">' % (img, args.display_text)
+    else:
+        output = '![%s](%s)' % (args.display_text, img)
+
+    print(output)
+
+    # Quit.
+    sys.exit(EXIT_OK)
+
+
+def lorem_text_command():
+    """Generate lorem text."""
+
+    __author__ = "Shawn Davis <shawn@develmaycare.com>"
+    __date__ = "2017-03-14"
+    __help__ = """
+    """
+    __version__ = "0.1.0-d"
+
+    # Define image choices.
+    IMAGE_CHOICES = [
+        "abstract",
+        "animals",
+        "business",
+        "cats",
+        "city",
+        "food",
+        "nightlife",
+        "fashion",
+        "people",
+        "nature",
+        "sports",
+        "technics",
+        "transport",
+        "*",
+    ]
+
+    # Define options and arguments.
+    parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
+
+    parser.add_argument(
+        "--format=",
+        choices=["html", "plain"],
+        default="plain",
+        dest="output_format",
+        help="Choose the format of the output.",
+        nargs="?"
+    )
+
+    parser.add_argument(
+        "--headings",
+        action="store_true",
+        dest="headings_enabled",
+        help="Generate heading text."
+    )
+
+    parser.add_argument(
+        "--image-category=",
+        choices=IMAGE_CHOICES,
+        default="abstract",
+        dest="image_category",
+        help="The lorempixel.com category of images when using --images option. Use * for random."
+    )
+
+    parser.add_argument(
+        "--image-height=",
+        default=200,
+        dest="image_height",
+        help="Height of images when using --images option."
+    )
+
+    parser.add_argument(
+        "--image-width=",
+        default=400,
+        dest="image_width",
+        help="Width of images when using --images option."
+    )
+
+    parser.add_argument(
+        "--images",
+        action="store_true",
+        dest="images_enabled",
+        help="Generate images in the text. Uses lorempixel.com for the image."
+    )
+
+    parser.add_argument(
+        "-s=",
+        "--sections=",
+        default=1,
+        dest="total_sections",
+        help="Number of sections to generate."
+    )
+
+    # Access to the version number requires special consideration, especially
+    # when using sub parsers. The Python 3.3 behavior is different. See this
+    # answer: http://stackoverflow.com/questions/8521612/argparse-optional-subparser-for-version
+    # parser.add_argument('--version', action='version', version='%(prog)s 2.0')
+    parser.add_argument(
+        "-v",
+        action="version",
+        help="Show version number and exit.",
+        version=__version__
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        help="Show verbose version information and exit.",
+        version="%(prog)s" + " %s %s by %s" % (__version__, __date__, __author__)
+    )
+
+    # This will display help or input errors as needed.
+    args = parser.parse_args()
+    # print args
+
+    # Define text.
+    lorem_text = "Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Nulla sed mauris id felis fermentum " \
+                 "cursus. Proin vulputate. Maecenas lobortis. Nullam ornare lacinia diam. Quisque lobortis metus " \
+                 "ac ante. Proin tincidunt tellus elementum nibh molestie sodales. Proin vitae libero."
+
+    # Output will be collected in a list.
+    lines = list()
+
+    # Create the main heading.
+    if args.headings_enabled:
+        if args.output_format == "html":
+            lines.append('<h1>Lorem</h1>')
+            lines.append("")
+        else:
+            lines.append("# Lorem")
+            lines.append("")
+
+    # Generate the output.
+    count = 0
+    while count <= int(args.total_sections):
+
+        if args.headings_enabled:
+            if args.output_format == "html":
+                lines.append('<h2>Ipsum</h2>')
+                lines.append("")
+            else:
+                lines.append("## Ipsum")
+                lines.append("")
+
+        if args.output_format == "html":
+            lines.append('<p>%s</p>' % lorem_text)
+        else:
+            lines.append(lorem_text)
+
+        lines.append("")
+
+        if args.images_enabled:
+
+            # Deal with random category.
+            image_category = args.image_category
+
+            if args.image_category == "*":
+                choices = IMAGE_CHOICES
+                choices.pop(-1)
+
+                image_category = random.choice(choices)
+
+            # Get image height and width.
+            image_height = args.image_height
+            image_width = args.image_width
+
+            # Create the image string.
+            img = "http://lorempixel.com/%s/%s/%s/Lorem-Text" % (image_width, image_height, image_category)
+
+            # Create the output.
+            if args.output_format == "html":
+                lines.append('<img src="%s" alt="Lorem Ipsum">' % img)
+            else:
+                lines.append('![Lorem Ipsum](%s)' % img)
+
+            lines.append("")
+
+        count += 1
+
+    # Output the lines.
+    print("\n".join(lines))
 
     # Quit.
     sys.exit(EXIT_OK)

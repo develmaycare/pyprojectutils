@@ -1061,9 +1061,9 @@ def init_project_command():
 
     # Define command meta data.
     __author__ = "Shawn Davis <shawn@develmaycare.com>"
-    __date__ = "2017-03-12"
+    __date__ = "2017-03-16"
     __help__ = """"""
-    __version__ = "0.2.0-d"
+    __version__ = "0.2.1-d"
 
     # Initialize the argument parser.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
@@ -1182,13 +1182,7 @@ def init_project_command():
     args = parser.parse_args()
 
     # Deal with templates and template questions.
-    templates = {
-        'gitignore': None,
-        'ini': None,
-        'manifest': None,
-        'readme': None,
-        'requirements': None,
-    }
+    templates = dict()
     if args.templates:
         for i in args.templates:
             template_name, template_path = i.split(":")

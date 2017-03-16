@@ -967,7 +967,7 @@ class Project(Config):
 
         :param templates: A dictionary of template names and template paths, like
                           ``{'readme': "/path/to/readme.md.j2"}``.
-        :type templates: str
+        :type templates: dict
 
         This method does the following:
 

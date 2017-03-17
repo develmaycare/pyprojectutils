@@ -55,6 +55,7 @@ clean:
 .PHONY: html
 html:
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
+	sed -i "" 's,/Users/shawn/Work/pyprojectutils/pyprojectutils,PROJECT_HOME,g' build/html/reference.html;
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
 

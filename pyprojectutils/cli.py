@@ -10,7 +10,6 @@ from datetime_machine import DateTime
 from library.constants import BASE_ENVIRONMENT, BITBUCKET_USER, DEFAULT_SCM, DEVELOPMENT, DOCUMENTATION_HOME, \
     ENVIRONMENTS, EXIT_OK, EXIT_INPUT, EXIT_OTHER, EXIT_USAGE, GITHUB_ENABLED, GITHUB_PASSWORD, GITHUB_USER, \
     LICENSE_CHOICES, PROJECT_ARCHIVE, PROJECT_HOME, PROJECTS_ON_HOLD, REPO_META_PATH
-from library.colors import blue, cyan, green, magenta, red, white, yellow
 from library.docs import Entry as DocumentationEntry
 from library.exceptions import OutputError
 from library.issues import Issue
@@ -19,7 +18,7 @@ from library.projects import autoload_project, format_projects_for_csv, format_p
 from library.organizations import BaseOrganization, Business, Client
 from library.passwords import RandomPassword
 from library.releases import Version
-from library.repos import get_repos, Repo
+from library.repos import create_repo, get_repos, Repo
 from library.shortcuts import find_file, get_input, make_dir, parse_template, print_error, print_info, print_warning, \
     read_file, write_file
 
@@ -29,9 +28,9 @@ __all__ = (
     "archive_project_command",
     "bump_version_command",
     "checkout_project_command",
+    "create_repo_command",
     "enable_project_command",
     "export_github_command",
-    "generate_password",
     "hold_project_command",
     "init_project_command",
     "list_dependencies_command",
@@ -41,6 +40,7 @@ __all__ = (
     "lorem_image_command",
     "lorem_text_command",
     "project_help_command",
+    "random_password_command",
     "stat_documentation_command",
     "stat_project_command",
 )
@@ -490,6 +490,104 @@ You may also specify the ``DEFAULT_SCM`` environment variable to automatically u
     sys.exit(EXIT_OK)
 
 
+def create_repo_command():
+    """Create a (remote) source code repo."""
+
+    # Define command meta data.
+    __author__ = "Shawn Davis <shawn@develmaycare.com>"
+    __date__ = "2017-03-16"
+    __help__ = """"""
+    __version__ = "0.1.0-d"
+
+    # Initialize the argument parser.
+    parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
+
+    parser.add_argument(
+        "repo_name",
+        help="The name of the repo. This defaults to the current directory name.",
+        nargs="?"
+    )
+
+    parser.add_argument(
+        "-D=",
+        "--description=",
+        dest="description",
+        help="The description. Defaults to the contents of the DESCRIPTION.txt file if one is present."
+    )
+
+    parser.add_argument(
+        "--host=",
+        choices=["bitbucket", "bb", "github", "gh"],
+        default=DEFAULT_SCM,
+        dest="host",
+        help="The SCM provider. The abbreviation and full name are supported as shown. Defaults to the DEFAULT_SCM "
+             "environment variable."
+    )
+
+    parser.add_argument(
+        "-I",
+        "--issues",
+        action="store_true",
+        dest="issues_enabled",
+        help="Indicates issues should be enabled for the repo."
+    )
+
+    parser.add_argument(
+        "-P",
+        "--private",
+        action="store_true",
+        dest="is_private",
+        help="Indicates the repo is private."
+    )
+
+    # Access to the version number requires special consideration, especially
+    # when using sub parsers. The Python 3.3 behavior is different. See this
+    # answer: http://stackoverflow.com/questions/8521612/argparse-optional-subparser-for-version
+    # parser.add_argument('--version', action='version', version='%(prog)s 2.0')
+    parser.add_argument(
+        "-v",
+        action="version",
+        help="Show version number and exit.",
+        version=__version__
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        help="Show verbose version information and exit.",
+        version="%(prog)s" + " %s %s by %s" % (__version__, __date__, __author__)
+    )
+
+    # Parse arguments. Help, version, and usage errors are automatically handled.
+    args = parser.parse_args()
+
+    # Attempt to automatically define the description.
+    if args.description:
+        description = args.description
+    else:
+        project = Project(os.path.join(PROJECT_HOME, args.repo_name))
+        if project.description:
+            description = project.description
+        elif project.description_exists:
+            description = read_file(os.path.join(PROJECT_HOME, args.repo_name, "DESCRIPTION.txt"))
+        else:
+            description = None
+
+    # Create the repo.
+    try:
+        create_repo(
+            args.repo_name,
+            description=description,
+            has_issues=args.issues_enabled,
+            is_private=args.is_private,
+            vendor=args.host
+        )
+    except NotImplementedError as e:
+        print_error(e.message, EXIT_INPUT)
+
+    # Quit.
+    sys.exit(EXIT_OK)
+
+
 def enable_project_command():
     """Re-enable a project from hold or archive."""
 
@@ -892,76 +990,6 @@ We look for labels of ready, in progress, on hold, and review to determine the i
             print(output)
 
     # Exit.
-    sys.exit(EXIT_OK)
-
-
-def generate_password():
-    """Generate a random password."""
-
-    __author__ = "Shawn Davis <shawn@develmaycare.com>"
-    __date__ = "2016-12-11"
-    __help__ = """
-We often need to generate passwords automatically. This utility does just
-that. Install pyprojectutils during deployment to create passwords on the fly.
-    """
-    __version__ = "0.10.2-d"
-
-    # Define options and arguments.
-    parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
-
-    parser.add_argument(
-        "--format=",
-        choices=["crypt", "md5", "plain", "htpasswd"],
-        default="plain",
-        dest="format",
-        help="Choose the format of the output.",
-        nargs="?"
-    )
-    parser.add_argument("--strong", action="store_true", help="Make the password stronger.")
-    parser.add_argument(
-        "-U",
-        action="store_true",
-        dest="use_unambiguous",
-        help="Avoid ambiguous characters."
-    )
-
-    # Access to the version number requires special consideration, especially
-    # when using sub parsers. The Python 3.3 behavior is different. See this
-    # answer: http://stackoverflow.com/questions/8521612/argparse-optional-subparser-for-version
-    # parser.add_argument('--version', action='version', version='%(prog)s 2.0')
-    parser.add_argument(
-        "-v",
-        action="version",
-        help="Show version number and exit.",
-        version=__version__
-    )
-    parser.add_argument(
-        "--version",
-        action="version",
-        help="Show verbose version information and exit.",
-        version="%(prog)s" + " %s %s by %s" % (__version__, __date__, __author__)
-    )
-
-    # This will display help or input errors as needed.
-    args = parser.parse_args()
-    # print args
-
-    password_length = 10
-    if args.strong:
-        password_length = 20
-
-    password = RandomPassword(password_length, use_unambiguous=args.use_unambiguous)
-
-    if args.format == "crypt":
-        print(password.to_crypt())
-    elif args.format == "htpasswd":
-        print(password.to_htpasswd())
-    elif args.format == "md5":
-        print(password.to_md5())
-    else:
-        print(password.plain_text)
-
-    # Quit.
     sys.exit(EXIT_OK)
 
 
@@ -2438,22 +2466,26 @@ def project_help_command():
     # print args
 
     # Iterate through the commands.
+    total_commands = 0
     for command_name in __all__:
         try:
             callback = globals()[command_name]
 
             tokens = command_name.split("_")
-            name = "%s%s" % (tokens[0], tokens[1])
+            if tokens[0] == "list":
+                name = "ls%s" % tokens[1]
+            else:
+                name = "%s%s" % (tokens[0], tokens[1])
 
-            # print("%s: %s" % (name, callback.__doc__))
-            # print("")
+            total_commands += 1
 
             print(name)
             print(callback.__doc__)
             print("")
-
         except KeyError:
             pass
+
+    print("%s commands." % total_commands)
 
     # Exit.
     sys.exit(EXIT_OK)
@@ -2698,6 +2730,76 @@ The special --hold option may be used to list only projects that are on hold. Se
             print("    cd %s/%s && git st" % (PROJECT_HOME, i))
     else:
         print("No projects with uncommitted changes.")
+
+    # Quit.
+    sys.exit(EXIT_OK)
+
+
+def random_password_command():
+    """Generate a random password."""
+
+    __author__ = "Shawn Davis <shawn@develmaycare.com>"
+    __date__ = "2016-12-11"
+    __help__ = """
+We often need to generate passwords automatically. This utility does just
+that. Install pyprojectutils during deployment to create passwords on the fly.
+    """
+    __version__ = "0.10.2-d"
+
+    # Define options and arguments.
+    parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
+
+    parser.add_argument(
+        "--format=",
+        choices=["crypt", "md5", "plain", "htpasswd"],
+        default="plain",
+        dest="format",
+        help="Choose the format of the output.",
+        nargs="?"
+    )
+    parser.add_argument("--strong", action="store_true", help="Make the password stronger.")
+    parser.add_argument(
+        "-U",
+        action="store_true",
+        dest="use_unambiguous",
+        help="Avoid ambiguous characters."
+    )
+
+    # Access to the version number requires special consideration, especially
+    # when using sub parsers. The Python 3.3 behavior is different. See this
+    # answer: http://stackoverflow.com/questions/8521612/argparse-optional-subparser-for-version
+    # parser.add_argument('--version', action='version', version='%(prog)s 2.0')
+    parser.add_argument(
+        "-v",
+        action="version",
+        help="Show version number and exit.",
+        version=__version__
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        help="Show verbose version information and exit.",
+        version="%(prog)s" + " %s %s by %s" % (__version__, __date__, __author__)
+    )
+
+    # This will display help or input errors as needed.
+    args = parser.parse_args()
+    # print args
+
+    password_length = 10
+    if args.strong:
+        password_length = 20
+
+    password = RandomPassword(password_length, use_unambiguous=args.use_unambiguous)
+
+    if args.format == "crypt":
+        print(password.to_crypt())
+    elif args.format == "htpasswd":
+        print(password.to_htpasswd())
+    elif args.format == "md5":
+        print(password.to_md5())
+    else:
+        print(password.plain_text)
 
     # Quit.
     sys.exit(EXIT_OK)

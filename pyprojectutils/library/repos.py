@@ -13,8 +13,8 @@ import os
 import urllib2
 from github import Github
 from .config import Config
-from .constants import BITBUCKET_SCM, BITBUCKET_PASSWORD, BITBUCKET_USER, DEFAULT_SCM, GITHUB_PASSWORD, GITHUB_SCM, \
-    GITHUB_USER, REPO_META_PATH
+from .constants import BITBUCKET_SCM, DEFAULT_SCM, GITHUB_SCM
+from .variables import BITBUCKET_PASSWORD, BITBUCKET_USER, GITHUB_PASSWORD, GITHUB_USER, REPO_META_PATH
 
 # Exports
 
@@ -26,6 +26,45 @@ __all__ = (
 )
 
 # Functions
+
+
+def create_repo(name, description=None, has_issues=False, is_private=False, vendor=DEFAULT_SCM):
+    """Create a remote repo.
+
+    :param name: The repo name.
+    :type name: str
+
+    :param description: Description of the repo.
+    :type description: str
+
+    :param is_private: Indicates the repo should be private.
+    :type is_private: bool
+
+    :param has_issues: Indicates the repo should include issues.
+    :type has_issues: bool
+
+    :param vendor: The SCM vendor to use. Defaults to the ``DEFAULT_SCM`` environment variable.
+    :type vendor: str
+
+    :rtype: Repo
+
+    .. versionadded:: 0.34.0-d
+
+    """
+    if vendor in ("github", "gh"):
+
+        # Load the API and get the authenticated user.
+        gh = Github(GITHUB_USER, GITHUB_PASSWORD)
+        user = gh.get_user()
+
+        # Create the repo.
+        result = user.create_repo(name, description=description, private=is_private, has_issues=has_issues)
+
+        # Return a repo object.
+        return Repo(name, cli="git", host=vendor, is_private=is_private)
+
+    else:
+        raise NotImplementedError("SCM vendor is not currently supported: %s" % vendor)
 
 
 # noinspection SpellCheckingInspection

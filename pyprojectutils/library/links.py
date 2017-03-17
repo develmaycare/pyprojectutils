@@ -1,6 +1,6 @@
 """
 
-..versionadded:: 0.28.0-d
+.. versionadded:: 0.28.0-d
 
 """
 

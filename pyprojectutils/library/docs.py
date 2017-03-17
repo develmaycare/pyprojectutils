@@ -14,8 +14,9 @@ from collections import OrderedDict
 import commands
 import os
 from .config import Config, Section
-from .constants import AUTHOR, DOCUMENTATION_HOME, PUBLISHER
+from .constants import AUTHOR, PUBLISHER
 from .organizations import BaseOrganization
+from .variables import DOCUMENTATION_HOME
 
 # Exports
 

@@ -1,7 +1,6 @@
 # Imports
 
 from ConfigParser import InterpolationMissingOptionError, ParsingError, RawConfigParser, SafeConfigParser
-from os import environ as ENVIRONMENT_VARIABLES
 from os.path import exists as path_exists
 from .shortcuts import write_file
 

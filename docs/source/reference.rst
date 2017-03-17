@@ -90,6 +90,12 @@ Constants
 .. automodule:: library.constants
     :members:
 
+Docs
+----
+
+.. automodule:: library.docs
+    :members:
+
 Exceptions
 ----------
 
@@ -100,6 +106,12 @@ Issues
 ------
 
 .. automodule:: library.issues
+    :members:
+
+Links
+-----
+
+.. automodule:: library.links
     :members:
 
 Organizations
@@ -138,8 +150,20 @@ Repos
 .. automodule:: library.repos
     :members:
 
+Shell
+-----
+
+.. automodule:: library.shell
+    :members:
+
 Shortcuts
 ---------
 
 .. automodule:: library.shortcuts
+    :members:
+
+Variables
+---------
+
+.. automodule:: library.variables
     :members:

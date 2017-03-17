@@ -5,11 +5,11 @@ Generate lorem text.
 
 .. code-block:: none
 
-usage: loremtext [-h] [--format= [{html,plain}]] [--headings]
-                 [--image-category= {abstract,animals,business,cats,city,food,nightlife,fashion,people,nature,sports,technics,transport,*}]
-                 [--image-height= IMAGE_HEIGHT]
-                 [--image-width= IMAGE_WIDTH] [--images]
-                 [-s= TOTAL_SECTIONS] [-v] [--version]
+    usage: loremtext [-h] [--format= [{html,plain}]] [--headings]
+                     [--image-category= {abstract,animals,business,cats,city,food,nightlife,fashion,people,nature,sports,technics,transport,*}]
+                     [--image-height= IMAGE_HEIGHT]
+                     [--image-width= IMAGE_WIDTH] [--images]
+                     [-s= TOTAL_SECTIONS] [-v] [--version]
 
     optional arguments:
       -h, --help            show this help message and exit

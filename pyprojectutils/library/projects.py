@@ -4,15 +4,16 @@ from collections import OrderedDict
 import os
 from colors import cyan, green, red, yellow
 from .config import Config, Section
-from .constants import ENVIRONMENTS, GITIGNORE_TEMPLATE, LINK_CATEGORIES, MANIFEST_TEMPLATE, PROJECT_INI_TEMPLATE, \
-    README_TEMPLATE, REQUIREMENTS_TEMPLATE
+from .constants import ENVIRONMENTS, LINK_CATEGORIES
 from .links import Link
 from .organizations import Business, Client
 from .packaging import PackageConfig
 from .repos import Repo
 from .shell import Command
 from .shortcuts import bool_to_yes_no, find_file, parse_jinja_template, read_file, write_file, print_info
-from .variables import BITBUCKET_USER, GITHUB_USER, DEVELOPER_CODE, DEVELOPER_NAME, PROJECT_ARCHIVE, PROJECT_HOME, PROJECTS_ON_HOLD
+from .variables import BITBUCKET_USER, GITHUB_USER, GITIGNORE_TEMPLATE, DEVELOPER_CODE, DEVELOPER_NAME, \
+    MANIFEST_TEMPLATE, PROJECT_ARCHIVE, PROJECT_HOME, PROJECT_INI_TEMPLATE, PROJECTS_ON_HOLD, README_TEMPLATE, \
+    REQUIREMENTS_TEMPLATE
 
 # Exports
 

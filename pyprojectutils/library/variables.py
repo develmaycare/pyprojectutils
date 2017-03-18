@@ -1,8 +1,9 @@
 """
-.. versionadded:: 0.34.0-d
 
 Variables, as distinct from constants, change with the local environment. Defaults, if any, are established here if no
 value exists in the local environment.
+
+.. versionadded:: 0.34.0-d
 
 ``BITBUCKET_ENABLED``
 ---------------------
@@ -28,14 +29,14 @@ The Bitbucket user name.
 ``DEVELOPER_CODE``
 ------------------
 
-Default: ANON
+Default: ``ANON``
 
 A short code or abbreviation of your name or development company.
 
 ``DEVELOPER_NAME``
 ------------------
 
-Default: Anonymous
+Default: ``Anonymous``
 
 Your name or the name of your development company.
 
@@ -70,37 +71,56 @@ The GitHub user name.
 ``PROJECT_ARCHIVE``
 -------------------
 
-Default: $PROJECT_HOME/.archive
+Default: ``$PROJECT_HOME/.archive``
 
 Where projects are archived. Additional scripts may be written to further process projects in this directory.
 
 ``PROJECT_HOME``
 ----------------
 
-Default: ~/Work
+Default: ``~/Work``
 
 Where active projects are stored.
 
 ``PROJECTS_ON_HOLD``
 --------------------
 
-Default: $PROJECT_HOME/.hold
+Default: ``$PROJECT_HOME/.hold``
 
 Where inactive projects are stored.
 
 ``REPO_META_PATH``
 ------------------
 
-Default: $PROJECT_HOME/.repos
+Default: ``$PROJECT_HOME/.repos``
 
 Meta data (``repo.ini`` files) are stored where by ``checkoutproject``.
+
+``TEMPLATE_PATH``
+-----------------
+
+Default: ``$PYTHON_HOME/pyprojectutils/templates``
+
+.. versionchanged:: 0.34.1-d
+    These variables were migrated from ``constants``.
+
+The path to pyprojectutils templates. Used by the ``initproject`` command. This forms the basis for various other
+template variables:
+
+- ``GITIGNORE_TEMPLATE``: The template used for creating a project's ``.gitignore`` file.
+- ``MANIFEST_TEMPLATE``: The template used for creating a project's ``MANIFEST.in`` file.
+- ``PROJECT_INI_TEMPLATE``: The template used for creating a project's ``project.ini`` file.
+- ``README_TEMPLATE``: The template used for creating a project's ``README.markdown`` file.
+- ``REQUIREMENTS_TEMPLATE``: The template used for creating a project's ``requirements.pip`` file. The default file is
+  blank, but you may override the template to incorporate your own processing.
 
 """
 # Imports
 
 import os
 
-# NOTE: Since these are specific to each user, you *must* document the variables above.
+# NOTE: Since these are specific to each user, you *must* document the variables above. Otherwise the defaults will
+# appear in the documentation.
 __all__ = (
     "DEVELOPER_CODE",
     "DEVELOPER_NAME",
@@ -111,9 +131,15 @@ __all__ = (
     "GITHUB_ENABLED",
     "GITHUB_PASSWORD",
     "GITHUB_USER",
+    "GITIGNORE_TEMPLATE",
+    "MANIFEST_TEMPLATE",
     "PROJECT_ARCHIVE",
     "PROJECT_HOME",
+    "PROJECT_INI_TEMPLATE",
     "PROJECTS_ON_HOLD",
+    "README_TEMPLATE",
+    "REQUIREMENTS_TEMPLATE",
+    "TEMPLATE_PATH",
 )
 
 # The developer name is the name of an individual or company that creates and manages projects. The code is merely a
@@ -154,3 +180,16 @@ PROJECTS_ON_HOLD = os.environ.get("PROJECTS_ON_HOLD", os.path.join(PROJECT_HOME,
 
 # The path to repo.ini files.
 REPO_META_PATH = os.environ.get("REPO_META_PATH", os.path.join(PROJECT_HOME, ".repos"))
+
+# Templates. Especially for initproject.
+TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates")
+
+GITIGNORE_TEMPLATE = os.path.join(TEMPLATE_PATH, "gitignore.j2")
+
+MANIFEST_TEMPLATE = os.path.join(TEMPLATE_PATH, "manifest.in.j2")
+
+PROJECT_INI_TEMPLATE = os.path.join(TEMPLATE_PATH, "project.ini.j2")
+
+README_TEMPLATE = os.path.join(TEMPLATE_PATH, "readme.markdown.j2")
+
+REQUIREMENTS_TEMPLATE = os.path.join(TEMPLATE_PATH, "requirements.pip.j2")

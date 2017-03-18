@@ -18,21 +18,15 @@ __all__ = (
     "EXIT_USAGE",
     "EXPERIMENTAL",
     "GITHUB_SCM",
-    "GITIGNORE_TEMPLATE",
     "LICENSE_CHOICES",
     "LINK_CATEGORIES",
     "LIVE",
     "LIVE_ENVIRONMENT",
-    "MANIFEST_TEMPLATE",
     "PLANNING",
-    "PROJECT_INI_TEMPLATE",
     "PUBLISHER",
-    "README_TEMPLATE",
     "RELEASE",
-    "REQUIREMENTS_TEMPLATE",
     "STAGING",
     "STAGING_ENVIRONMENT",
-    "TEMPLATE_PATH",
     "TESTING",
     "TESTING_ENVIRONMENT",
 )
@@ -171,25 +165,3 @@ LINK_CATEGORIES = (
     ("scm", "code-fork"),
 )
 """Establish the recognized links and the icon to use when displayed as HTML."""
-
-# Templates. Especially for initproject.
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates")
-"""The path to pyprojectutils templates. Used by initproject."""
-
-GITIGNORE_TEMPLATE = os.path.join(TEMPLATE_PATH, "gitignore.j2")
-"""The template used for creating a project's ``.gitignore`` file."""
-
-MANIFEST_TEMPLATE = os.path.join(TEMPLATE_PATH, "manifest.in.j2")
-"""The template used for creating a project's ``MANIFEST.in`` file."""
-
-PROJECT_INI_TEMPLATE = os.path.join(TEMPLATE_PATH, "project.ini.j2")
-"""The template used for creating a project's ``project.ini`` file."""
-
-README_TEMPLATE = os.path.join(TEMPLATE_PATH, "readme.markdown.j2")
-"""The template used for creating a project's ``README.markdown`` file."""
-
-REQUIREMENTS_TEMPLATE = os.path.join(TEMPLATE_PATH, "requirements.pip.j2")
-"""
-The template used for creating a project's ``requirements.pip`` file. The default file is blank, but you may
-override the template to incorporate your own processing.
-"""

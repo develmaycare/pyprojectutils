@@ -36,8 +36,8 @@ Naming is always a challenge, especially on the command line.
 
 - Shorter names are better than longer names. Usually.
 - We prefer the convention of action + object. For example, bump + version, or ``bumpversion``.
-- It's okay to use short names or abbreviations for the object when the name is idiomatic. For example, random + pw, or
-  ``randompw``.
+- It's okay to use short names or abbreviations for the object when the name is idiomatic. For example, random +
+  password, or ``randompassword``.
 - If the action is something that is already common on most operating systems, use it. For example ls + projects, or
   ``lsprojects``.
 - Names can't conflict with existing commands. Obviously.

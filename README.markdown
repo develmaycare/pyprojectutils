@@ -40,15 +40,20 @@ The commands included in this package are:
 - archiveproject
 - bumpversion
 - checkoutproject
+- createrepo
 - enableproject
 - exportgithub
 - holdproject
 - initproject
+- loremimage
+- loremtext
 - lsdependencies
 - lsdocumentation
 - lsprojects
 - lsrepos
-- randompw
+- projecthelp
+- randompassword
+- statdocumentation
 - statproject
 
 See [the command reference](https://github.com/develmaycare/pyprojectutils/blob/master/docs/commands.rst).

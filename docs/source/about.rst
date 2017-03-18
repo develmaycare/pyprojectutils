@@ -10,7 +10,7 @@ Status
 ======
 
 This project is still under active development, but we're using it every day. It is reasonably stable if you want to
-try it out, but things will be changing over time.
+try it out, but things will be changing over time until version 1.
 
 Theory
 ======

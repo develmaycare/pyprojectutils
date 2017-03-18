@@ -7,9 +7,8 @@ import os
 import random
 import sys
 from datetime_machine import DateTime
-from library.constants import BASE_ENVIRONMENT, BITBUCKET_USER, DEFAULT_SCM, DEVELOPMENT, DOCUMENTATION_HOME, \
-    ENVIRONMENTS, EXIT_OK, EXIT_INPUT, EXIT_OTHER, EXIT_USAGE, GITHUB_ENABLED, GITHUB_PASSWORD, GITHUB_USER, \
-    LICENSE_CHOICES, PROJECT_ARCHIVE, PROJECT_HOME, PROJECTS_ON_HOLD, REPO_META_PATH
+from library.constants import BASE_ENVIRONMENT, DEFAULT_SCM, DEVELOPMENT, ENVIRONMENTS, EXIT_OK, EXIT_INPUT, \
+    EXIT_OTHER, EXIT_USAGE, LICENSE_CHOICES
 from library.docs import Entry as DocumentationEntry
 from library.exceptions import OutputError
 from library.issues import Issue
@@ -21,6 +20,8 @@ from library.releases import Version
 from library.repos import create_repo, get_repos, Repo
 from library.shortcuts import find_file, get_input, make_dir, parse_template, print_error, print_info, print_warning, \
     read_file, write_file
+from library.variables import BITBUCKET_USER, DOCUMENTATION_HOME, GITHUB_ENABLED, GITHUB_PASSWORD, GITHUB_USER, \
+    PROJECT_ARCHIVE, PROJECT_HOME, PROJECTS_ON_HOLD, REPO_META_PATH
 
 # Exports
 

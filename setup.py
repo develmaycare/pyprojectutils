@@ -22,7 +22,6 @@ setup(
     install_requires=[
         "jinja2",
         "semver",
-        "shell_command",
     ],
     dependency_links=[
         "https://github.com/develmaycare/python-datetime-machine.git",

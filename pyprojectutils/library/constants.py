@@ -165,3 +165,22 @@ LINK_CATEGORIES = (
     ("scm", "code-fork"),
 )
 """Establish the recognized links and the icon to use when displayed as HTML."""
+
+# lorempixel.com image categories. The * is used for randomization.
+IMAGE_CATEGORIES = [
+    "abstract",
+    "animals",
+    "business",
+    "cats",
+    "city",
+    "food",
+    "nightlife",
+    "fashion",
+    "people",
+    "nature",
+    "sports",
+    "technics",
+    "transport",
+    "*",
+]
+"""lorempixel.com image categories."""

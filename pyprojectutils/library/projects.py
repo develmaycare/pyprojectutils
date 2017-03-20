@@ -4,11 +4,11 @@ from collections import OrderedDict
 import os
 from colors import cyan, green, red, yellow
 from .config import Config, Section
-from .constants import ENVIRONMENTS, LINK_CATEGORIES
+from .constants import BITBUCKET_SCM, ENVIRONMENTS, GITHUB_SCM, LINK_CATEGORIES
 from .links import Link
 from .organizations import Business, Client
 from .packaging import PackageConfig
-from .repos import Repo
+from .repos import BaseRepo, BitbucketRepo, GitHubRepo
 from .shell import Command
 from .shortcuts import bool_to_yes_no, find_file, parse_jinja_template, read_file, write_file, print_info
 from .variables import BITBUCKET_USER, GITHUB_USER, GITIGNORE_TEMPLATE, DEVELOPER_CODE, DEVELOPER_NAME, \
@@ -510,7 +510,8 @@ def format_projects_for_html(projects, css_classes="table table-bordered table-s
     return "\n".join(output)
 
 
-def format_projects_for_shell(projects, color_enabled=False, heading="Projects", lines_enabled=False, show_all=False, show_branch=False):
+def format_projects_for_shell(projects, color_enabled=False, heading="Projects", lines_enabled=False, show_all=False,
+                              show_branch=False):
     """Get project list for output to shell.
 
     :param projects: The project list as returned by ``get_projects()``.
@@ -702,6 +703,7 @@ class Project(Config):
         self.total_directories = None
         self.total_files = None
         self.type = "project"
+        self.urls = None
         self.version = "0.1.0-d"
         self.version_exists = None
         self._requirements = list()
@@ -821,12 +823,20 @@ class Project(Config):
     def get_repo(self):
         """Get repo information for the project.
 
-        :rtype: repos.Repo
+        :rtype: BitbucketRepo | GitHubRepo | BaseRepo
 
         .. versionadded:: 0.27.3-d
 
+        .. versionchanged:: 0.34.4-d
+            The repo instance returned is now based on ``scm`` but defaults to the base repo.
+
         """
-        return Repo(self.name, cli=self.scm, project=self.title)
+        if self.scm == BITBUCKET_SCM:
+            return BitbucketRepo(self.name, project=self)
+        elif self.scm == GITHUB_SCM:
+            return GitHubRepo(self.name, project=self)
+        else:
+            return BaseRepo(self.name, cli=self.scm, project=self)
 
     def get_requirements(self, env=None, manager=None):
         """Get project requirements (dependencies).
@@ -1254,6 +1264,24 @@ class Project(Config):
         path = os.path.join(self.root, *args)
         return os.path.exists(path)
 
+    def read_file(self, name):
+        """Read a project file.
+
+        :param name: Name or path relative to project root.
+        :type name: str
+
+        :rtype: str | None
+        :returns: The contents of the file.
+
+        .. versionadded:: 0.34.4-d
+
+        """
+        path = os.path.join(self.root, name)
+        if not os.path.exists(path):
+            return None
+
+        return read_file(path)
+
     def to_csv(self, include_header=False):
         """Convert project attributes to CSV text output.
 
@@ -1333,7 +1361,7 @@ class Project(Config):
         line.append('"%s"' % bool_to_yes_no(self.version_exists))
 
         lines.append(",".join(line))
-        print lines
+        # print(lines)
 
         return "\n".join(lines)
 
@@ -1583,6 +1611,29 @@ class Project(Config):
         else:
             a.append("langauges: None")
         return "\n".join(a)
+
+    def truncated_title(self, limit=30, string="..."):
+        """Get the project title, truncating if over the limit.
+
+        :param limit: The maximum number of characters.
+        :type limit: int
+
+        :param string: The string to add to the truncated title.
+        :type string: str
+
+        :rtype: str
+
+        """
+        # There's nothing to do if the title is not over the limit.
+        if self.title <= limit:
+            return self.title
+
+        # Adjust the limit according to the string length, otherwise we'll still be over.
+        if string:
+            limit = limit - len(string)
+
+        # Return the altered title.
+        return self.title[:limit] + string
 
     def _get_disk(self):
         """Return the result of the du command (cleaned up).

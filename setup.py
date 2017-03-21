@@ -20,6 +20,7 @@ setup(
     url='https://github.com/develmaycare/pyprojectutils',
     packages=find_packages(),
     install_requires=[
+        "gitpython",
         "jinja2",
         "semver",
     ],
@@ -41,6 +42,8 @@ setup(
     ],
     zip_safe=False,
     tests_require=[
+        "gitpython",
+        "jinja2",
         "semver",
     ],
     test_suite='runtests.runtests',

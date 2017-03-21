@@ -2,7 +2,8 @@
 
 from collections import OrderedDict
 import os
-from colors import cyan, green, red, yellow
+from git import Repo as GitRepo
+from .colors import cyan, green, red, yellow
 from .config import Config, Section
 from .constants import BITBUCKET_SCM, ENVIRONMENTS, GITHUB_SCM, LINK_CATEGORIES
 from .links import Link
@@ -1678,25 +1679,34 @@ class Project(Config):
         """
         if self.path_exists(".git"):
 
-            # Determine whether the repo is dirty.
-            # See http://stackoverflow.com/a/5737794/241720
-            command = Command('cd %s && git status --porcelain' % self.root)
-            command.run()
+            # Determine whether the repo is dirty and get the current branch name.
+            repo = GitRepo(self.root)
+            self.is_dirty = repo.is_dirty()
+            self.branch = repo.active_branch
 
-            if len(command.output) > 0:
-                self.is_dirty = True
-            else:
-                self.is_dirty = False
+            # See http://stackoverflow.com/a/5737794/241720
+            # BUG: Command does not work with && or with path=.
+            # command = Command('cd %s && git status --porcelain' % self.root)
+            # command = Command('git status --porcelain', path=self.root)
+            # command.run()
+            #
+            # if len(command.output) > 0:
+            #     self.is_dirty = True
+            # else:
+            #     self.is_dirty = False
 
             # Get the current branch name.
-            command = Command("cd %s && git rev-parse --abbrev-ref HEAD" % self.root)
-            if command.run():
-                self.branch = command.output
-            else:
-                self.branch = "UNKNOWN"
+            # command = Command("cd %s && git rev-parse --abbrev-ref HEAD" % self.root)
+            # command = Command("git rev-parse --abbrev-ref HEAD", path=self.root)
+            # if command.run():
+            #     self.branch = command.output
+            # else:
+            #     self.branch = "UNKNOWN"
 
             return "git"
         elif self.path_exists(".hg"):
+
+            # TODO: Capturing the status of a Mercurial repo will probably fail for the same reasons as git above.
 
             # Determine whether the repo is dirty.
             # See http://stackoverflow.com/a/11012582/241720
@@ -1716,6 +1726,8 @@ class Project(Config):
 
             return "hg"
         elif self.path_exists(".svn"):
+            # TODO: Capturing the status of a Subversion repo will probably fail for the same reasons as git above.
+
             command = Command("test -z svn status", path=self.root)
             command.run()
             if command.status >= 1:

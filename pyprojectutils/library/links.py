@@ -37,7 +37,7 @@ class Link(object):
     def get_icon(self):
         """Get the Font Awesome font key word to use for the link.
 
-        :rtype str
+        :rtype: str
 
         .. tip::
             This is here to allow overriding of how the icon is obtained.

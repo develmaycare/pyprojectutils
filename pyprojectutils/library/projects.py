@@ -549,8 +549,8 @@ def format_projects_for_shell(projects, color_enabled=False, heading="Projects",
 
     # Print the column headings.
     output.append(
-        "%-30s %-20s %-15s %-5s %-10s %-15s %-10s %-20s"
-        % ("Title", "Category", "Type", "Org", "Version", "Status", "Disk", "SCM")
+        "%-30s %-20s %-15s %-5s %-10s %-15s %-15s %-10s %-20s"
+        % ("Title", "Category", "Type", "Org", "Version", "Stage", "Status", "Disk", "SCM")
     )
     output.append("-" * 130)
 
@@ -596,12 +596,13 @@ def format_projects_for_shell(projects, color_enabled=False, heading="Projects",
             else:
                 scm += " (unknown)"
 
-        line = "%-30s %-20s %-15s %-5s %-10s %-15s %-10s %-4s %-1s" % (
+        line = "%-30s %-20s %-15s %-5s %-10s %-15s %-15s %-10s %-4s %-1s" % (
             title,
             p.category,
             p.type,
             p.org,
             p.version,
+            p.stage,
             p.status,
             p.disk,
             scm,
@@ -698,7 +699,8 @@ class Project(Config):
         self.root = path
         self.scm = None
         self.setup_exists = None
-        self.status = "unknown"
+        self.stage = None
+        self.status = None
         self.tags = list()
         self.title = None
         self.total_directories = None
@@ -1222,6 +1224,14 @@ class Project(Config):
         # status, output = commands.getstatusoutput("cd %s && %s" % (self.root, command))
         # self.total_files = output.strip()
 
+        # Deal with transition from status and stage.
+        if self.stage is None and self.status is not None:
+            self.stage = self.status
+            self.status = self._get_status()
+        else:
+            self.stage = "planning"
+            self.status = self._get_status()
+
         # Get CLOC info.
         if include_cloc:
             command = Command("cloc %s --csv --quiet" % self.root)
@@ -1740,6 +1750,19 @@ class Project(Config):
             return "svn"
         else:
             return None
+
+    def _get_status(self):
+        """Get the current status of the project.
+
+        :rtype: str
+
+        """
+        if ".archive" in self.root:
+            return "archive"
+        elif ".hold" in self.root:
+            return "hold"
+        else:
+            return "active"
 
     def _load_section(self, name, values):
         """Overridden to add business, client, and project section values to the current instance."""

@@ -1794,13 +1794,44 @@ The special --hold option may be used to list only projects that are on hold. Se
     if "type" in criteria:
         heading += " (%s)" % criteria['type']
 
-    # Get the rows.
+    # Get the projects.
     projects = get_projects(
         project_home,
         criteria=criteria,
         include_disk=args.include_disk,
         show_all=args.show_all
     )
+
+    projects += get_projects(
+        PROJECTS_ON_HOLD,
+        criteria=criteria,
+        include_disk=args.include_disk,
+        show_all=args.show_all
+    )
+
+    projects += get_projects(
+        PROJECT_ARCHIVE,
+        criteria=criteria,
+        include_disk=args.include_disk,
+        show_all=args.show_all
+    )
+
+    # Get the rows, placing projects in alphabetical order.
+    names = list()
+    rows = list()
+
+    for p in projects:
+        if p.name not in names:
+            names.append(p.name)
+
+    names.sort()
+
+    for name in names:
+        for p in projects:
+            if name != p.name:
+                continue
+
+            rows.append(p)
 
     # Deal with color logic.
     color_enabled = True
@@ -1822,7 +1853,7 @@ The special --hold option may be used to list only projects that are on hold. Se
         )
     else:
         output = format_projects_for_shell(
-            projects,
+            rows,
             color_enabled=color_enabled,
             heading=heading,
             lines_enabled=args.lines_enabled,

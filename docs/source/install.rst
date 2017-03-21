@@ -2,11 +2,14 @@
 Install
 *******
 
-This project is still under active development. To install:
+.. warning::
+    This project is still under active development.
+
+To install:
 
 .. code-block:: bash
 
-	pip install -e git+https://github.com/develmaycare/pyprojectutils.git#egg=pyprojectutils;
+    pip install https://github.com/develmaycare/pyprojectutils.git;
 
 You can decide whether this should be installed in a virtual environment or as part of the global environment. We
 install it globally so it will work regardless of the active virtual env.
@@ -15,6 +18,21 @@ Environment Variables
 =====================
 
 You may set environment variables to support commands and provide default values for certain options.
+
+``DEFAULT_SCM``
+---------------
+
+Default: ``github``
+
+The default source code management tool. Acceptable values are:
+
+- ``bitbucket`` or ``bb``
+- ``github`` or ``gh``
+- A host name, such as ``github.com``.
+
+.. tip::
+    You may also set ``BITBUCKET_USER``, ``BITBUCKET_PASSWORD``, ``GITHUB_USER``, ``GITHUB_PASSWORD``. See
+    `Constants <reference.html#module-library.constants>`_.
 
 ``DEVELOPER_CODE``
 ------------------

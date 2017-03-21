@@ -2,13 +2,15 @@
 About
 *****
 
-A collection of documentation and command line utilities for managing a software project.
+A collection of documentation and command line utilities for managing a software project. Written in Python and
+currently in use for mostly Python projects, the utilities may be used for *any* project you manage from the command
+line.
 
 Status
 ======
 
 This project is still under active development, but we're using it every day. It is reasonably stable if you want to
-try it out, but things will be changing over time.
+try it out, but things will be changing over time until version 1.
 
 Theory
 ======

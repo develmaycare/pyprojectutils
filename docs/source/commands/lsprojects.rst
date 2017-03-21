@@ -5,11 +5,11 @@ List projects managed on the local machine.
 
 .. code-block:: none
 
-usage: lsprojects [-h] [-a] [--archive] [--branch] [--columns] [--dirty]
-                  [-d] [-f= CRITERIA] [--format= {csv,html,shell}] [--hold]
-                  [--html-classes CSS_CLASSES] [--html-linked]
-                  [--html-wrapped] [--lines] [--no-color]
-                  [-p= PROJECT_HOME] [-v] [--version]
+    usage: lsprojects [-h] [-a] [--archive] [--branch] [--columns] [--dirty]
+                      [-d] [-f= CRITERIA] [--format= {csv,html,shell}] [--hold]
+                      [--html-classes CSS_CLASSES] [--html-linked]
+                      [--html-wrapped] [--lines] [--no-color]
+                      [-p= PROJECT_HOME] [-v] [--version]
 
     optional arguments:
       -h, --help            show this help message and exit

@@ -3,18 +3,13 @@ import os
 __all__ = (
     "AUTHOR",
     "BASE_ENVIRONMENT",
-    "BITBUCKET_ENABLED",
     "BITBUCKET_SCM",
-    "BITBUCKET_USER",
     "BUSINESS",
     "CLIENT",
     "CONTROL_ENVIRONMENT",
     "DEFAULT_SCM",
     "DEVELOPMENT",
-    "DEVELOPER_CODE",
-    "DEVELOPER_NAME",
     "DEVELOPMENT_ENVIRONMENT",
-    "DOCUMENTATION_HOME",
     "ENVIRONMENTS",
     "EXIT_ENV",
     "EXIT_INPUT",
@@ -22,39 +17,19 @@ __all__ = (
     "EXIT_OTHER",
     "EXIT_USAGE",
     "EXPERIMENTAL",
-    "GITHUB_ENABLED",
-    "GITHUB_PASSWORD",
     "GITHUB_SCM",
-    "GITHUB_USER",
-    "GITIGNORE_TEMPLATE",
     "LICENSE_CHOICES",
     "LINK_CATEGORIES",
     "LIVE",
     "LIVE_ENVIRONMENT",
-    "MANIFEST_TEMPLATE",
-    "PROJECT_ARCHIVE",
-    "PROJECT_HOME",
-    "PROJECT_INI_TEMPLATE",
-    "PROJECTS_ON_HOLD",
+    "PLANNING",
     "PUBLISHER",
-    "README_TEMPLATE",
     "RELEASE",
-    "REPO_META_PATH",
-    "REQUIREMENTS_TEMPLATE",
     "STAGING",
     "STAGING_ENVIRONMENT",
-    "TEMPLATE_PATH",
     "TESTING",
     "TESTING_ENVIRONMENT",
 )
-
-# The developer name is the name of an individual or company that creates and manages projects. The code is merely a
-# short form of the name, such as an abbreviation. For example, we abbreviate Devel May Care as DMC.
-DEVELOPER_CODE = os.environ.get("DEVELOPER_CODE", "UNK")
-"""A short code or abbreviation of your name or development company."""
-
-DEVELOPER_NAME = os.environ.get("DEVELOPER_NAME", "Unidentified")
-"""Your name or the name of your development company."""
 
 # Organization types help identify who is involved in a project.
 BUSINESS = "business"
@@ -69,10 +44,6 @@ AUTHOR = "author"
 
 PUBLISHER = "publisher"
 """Identifies an object as publisher (individual or organization)."""
-
-# Documentation is stored in a specific location.
-DOCUMENTATION_HOME = os.environ.get("DOCUMENTATION_HOME", os.path.expanduser("~/Dropbox/Business/Documentation"))
-"""The location where documentation is stored."""
 
 # Standard stage identifiers.
 EXPERIMENTAL = "experimental"
@@ -141,27 +112,12 @@ EXIT_ENV = 3
 EXIT_OTHER = 4
 """All other (unsuccessful) exits."""
 
-# Location of projects. User home is automatically expanded.
-PROJECT_HOME = os.environ.get("PROJECT_HOME", os.path.expanduser("~/Work"))
-"""Where active projects are stored."""
-
-# Location of archived projects.
-PROJECT_ARCHIVE = os.environ.get("PROJECT_ARCHIVE", os.path.join(PROJECT_HOME, ".archive"))
-"""Where projects are archived. Additional scripts may be written to further display projects in this directory."""
-
-# Location of projects on hold.
-PROJECTS_ON_HOLD = os.environ.get("PROJECTS_ON_HOLD", os.path.join(PROJECT_HOME, ".hold"))
-"""Where inactive projects are stored."""
-
 # Support for source code repo meta data.
 BITBUCKET_SCM = "bitbucket.org"
 """The domain for Bitbucket."""
 
 GITHUB_SCM = "github.com"
 """The domain for GitHub."""
-
-REPO_META_PATH = os.environ.get("REPO_META_PATH", os.path.join(PROJECT_HOME, ".repos"))
-"""Meta data (``repo.ini`` files) are stored where by ``checkoutproject``."""
 
 # License options for the lice command.
 LICENSE_CHOICES = (
@@ -191,32 +147,6 @@ LICENSE_CHOICES = (
 )
 """License choices used by ``initproject``."""
 
-# Bitbucket integration requires a user name and password.
-BITBUCKET_USER = os.environ.get("BITBUCKET_USER", None)
-"""The Bitbucket user name."""
-
-BITBUCKET_PASSWORD = os.environ.get("BITBUCKET_PASSWORD", None)
-"""The Bitbucket password for ``BITBUCKET_USER``."""
-
-if BITBUCKET_USER and BITBUCKET_USER:
-    BITBUCKET_ENABLED = True
-    """Bitbucket is enabled if a user and password has been set."""
-else:
-    BITBUCKET_ENABLED = False
-
-# GitHub integration is only possible if the user sets a user and password in the local environment.
-GITHUB_USER = os.environ.get("GITHUB_USER", None)
-"""The GitHub user name."""
-
-GITHUB_PASSWORD = os.environ.get("GITHUB_PASSWORD", None)
-"""The GitHub password for ``GITHUB_USER``."""
-
-if GITHUB_USER and GITHUB_PASSWORD:
-    GITHUB_ENABLED = True
-    """GitHub is enabled if a user and password has been set."""
-else:
-    GITHUB_ENABLED = False
-
 # The default SCM is the user's preferred provider (host) for repos.
 DEFAULT_SCM = os.environ.get("DEFAULT_SCM", "github")
 """The default source code management tool to use for ``checkoutproject`` and other repo operations."""
@@ -236,24 +166,21 @@ LINK_CATEGORIES = (
 )
 """Establish the recognized links and the icon to use when displayed as HTML."""
 
-# Templates. Especially for initproject.
-TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates")
-"""The path to pyprojectutils templates. Used by initproject."""
-
-GITIGNORE_TEMPLATE = os.path.join(TEMPLATE_PATH, "gitignore.j2")
-"""The template used for creating a project's ``.gitignore`` file."""
-
-MANIFEST_TEMPLATE = os.path.join(TEMPLATE_PATH, "manifest.in.j2")
-"""The template used for creating a project's ``MANIFEST.in`` file."""
-
-PROJECT_INI_TEMPLATE = os.path.join(TEMPLATE_PATH, "project.ini.j2")
-"""The template used for creating a project's ``project.ini`` file."""
-
-README_TEMPLATE = os.path.join(TEMPLATE_PATH, "readme.markdown.j2")
-"""The template used for creating a project's ``README.markdown`` file."""
-
-REQUIREMENTS_TEMPLATE = os.path.join(TEMPLATE_PATH, "requirements.pip.j2")
-"""
-The template used for creating a project's ``requirements.pip`` file. The default file is blank, but you may
-override the template to incorporate your own processing.
-"""
+# lorempixel.com image categories. The * is used for randomization.
+IMAGE_CATEGORIES = [
+    "abstract",
+    "animals",
+    "business",
+    "cats",
+    "city",
+    "food",
+    "nightlife",
+    "fashion",
+    "people",
+    "nature",
+    "sports",
+    "technics",
+    "transport",
+    "*",
+]
+"""lorempixel.com image categories."""

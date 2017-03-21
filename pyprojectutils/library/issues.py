@@ -5,7 +5,7 @@
 """
 # Imports
 
-from .shell import shell_command
+from .shell import Command
 
 
 # Classes
@@ -45,20 +45,20 @@ class Issue(object):
         # TODO: Create an issue using the GitHub API rather than the hub command.
 
         # Create the base command.
-        command = 'hub issue create -m "%s"' % self.title
+        cmd = 'hub issue create -m "%s"' % self.title
 
         # Add labels.
         if self.labels:
-            command += " -l " + " -l ".join(self.labels)
+            cmd += " -l " + " -l ".join(self.labels)
 
         # Return the command if requested.
         if debug:
-            return command
+            return cmd
 
         # Run the command.
-        code, output = shell_command(command)
+        command = Command(cmd)
 
-        if code == 0:
+        if command.run():
             return True
         else:
             return False

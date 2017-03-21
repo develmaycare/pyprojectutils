@@ -8,3 +8,27 @@
     max-width: 100%;
     overflow: visible;
 }
+
+/* support versionadded and versionchanged */
+
+.versionadded {
+    background: #e7f2fa;
+    border: 1px solid #68b1dc;
+    border-radius: 5px;
+    margin: 5px 0 5px 0;
+    padding: 5px;
+    -moz-border-radius: 5px;
+}
+
+.versionchanged {
+    background: #e7f2fa;
+    border: 1px solid #68b1dc;
+    border-radius: 10px;
+    padding: 10px;
+    margin: 5px 0 5px 0;
+    -moz-border-radius: 10px;
+}
+
+.versionmodified {
+    font-weight: bold;
+}

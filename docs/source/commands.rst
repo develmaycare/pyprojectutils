@@ -2,12 +2,16 @@
 Commands
 ********
 
+.. tip::
+    Use the ``projecthelp`` command to get a list of commands.
+
 .. toctree::
     :maxdepth: 2
 
     archiveproject <commands/archiveproject>
     bumpversion <commands/bumpversion>
     checkoutproject <commands/checkoutproject>
+    createrepo <commands/createrepo>
     enableproject <commands/enableproject>
     exportgithub <commands/exportgithub>
     holdproject <commands/holdproject>
@@ -18,5 +22,7 @@ Commands
     lsrepos <commands/lsrepos>
     loremimage <commands/loremimage>
     loremtext <commands/loremtext>
-    randompw <commands/randompw>
+    projecthelp <commands/projecthelp>
+    randompassword <commands/randompassword>
+    statdocumentation <commands/statdocumentation>
     statproject <commands/statproject>

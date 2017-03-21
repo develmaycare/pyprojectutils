@@ -348,5 +348,5 @@ def write_file(path, content):
             f.write(content)
             f.close()
         return True
-    except IOError, e:
-        raise OutputError(e)
+    except IOError as e:
+        raise OutputError(e.message)

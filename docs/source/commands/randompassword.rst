@@ -1,12 +1,12 @@
-randompw
-========
+randompassword
+==============
 
 Generate a random password.
 
 .. code-block:: none
 
-    usage: randompw [-h] [--format= [{crypt,md5,plain,htpasswd}]] [--strong]
-                    [-U] [-v] [--version]
+    usage: randompassword [-h] [--format= [{crypt,md5,plain,htpasswd}]] [--strong]
+                          [-U] [-v] [--version]
 
     optional arguments:
       -h, --help            show this help message and exit
@@ -19,3 +19,6 @@ Generate a random password.
 
 We often need to generate passwords automatically. This utility does just
 that. Install pyprojectutils during deployment to create passwords on the fly.
+
+.. versionchanged:: 0.34.0-d
+    Renamed from ``randompw`` to ``randompassword``.

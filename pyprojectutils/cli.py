@@ -1,16 +1,15 @@
 # Imports
 
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
+# noinspection PyCompatibility
 import commands
 from datetime import datetime
 import os
 import random
 import sys
 from datetime_machine import DateTime
-from library.constants import BASE_ENVIRONMENT, BITBUCKET_USER, DEFAULT_SCM, DEVELOPMENT, DOCUMENTATION_HOME, \
-    ENVIRONMENTS, EXIT_OK, EXIT_INPUT, EXIT_OTHER, EXIT_USAGE, GITHUB_ENABLED, GITHUB_PASSWORD, GITHUB_USER, \
-    LICENSE_CHOICES, PROJECT_ARCHIVE, PROJECT_HOME, PROJECTS_ON_HOLD, REPO_META_PATH
-from library.colors import blue, cyan, green, magenta, red, white, yellow
+from library.constants import BASE_ENVIRONMENT, DEFAULT_SCM, DEVELOPMENT, ENVIRONMENTS, EXIT_OK, EXIT_INPUT, \
+    EXIT_OTHER, EXIT_USAGE, IMAGE_CATEGORIES, LICENSE_CHOICES
 from library.docs import Entry as DocumentationEntry
 from library.exceptions import OutputError
 from library.issues import Issue
@@ -19,9 +18,12 @@ from library.projects import autoload_project, format_projects_for_csv, format_p
 from library.organizations import BaseOrganization, Business, Client
 from library.passwords import RandomPassword
 from library.releases import Version
-from library.repos import get_repos, Repo
+from library.repos import create_local_repo, create_remote_repo, get_repos, BaseRepo
+from library.shell import Command
 from library.shortcuts import find_file, get_input, make_dir, parse_template, print_error, print_info, print_warning, \
-    read_file, write_file
+    write_file
+from library.variables import BITBUCKET_USER, DOCUMENTATION_HOME, GITHUB_ENABLED, GITHUB_PASSWORD, GITHUB_USER, \
+    PROJECT_ARCHIVE, PROJECT_HOME, PROJECTS_ON_HOLD, REPO_META_PATH
 
 # Exports
 
@@ -29,9 +31,9 @@ __all__ = (
     "archive_project_command",
     "bump_version_command",
     "checkout_project_command",
+    "create_repo_command",
     "enable_project_command",
     "export_github_command",
-    "generate_password",
     "hold_project_command",
     "init_project_command",
     "list_dependencies_command",
@@ -41,6 +43,7 @@ __all__ = (
     "lorem_image_command",
     "lorem_text_command",
     "project_help_command",
+    "random_password_command",
     "stat_documentation_command",
     "stat_project_command",
 )
@@ -341,7 +344,7 @@ def checkout_project_command():
     """Check out a project from a source code repository."""
 
     __author__ = "Shawn Davis <shawn@develmaycare.com>"
-    __date__ = "2017-02-07"
+    __date__ = "2017-03-20"
     __help__ = """NOTES
 
 Only Git repos are currently supported.
@@ -356,7 +359,7 @@ You may also specify the ``DEFAULT_SCM`` environment variable to automatically u
 ``DEFAULT_SCM`` itself defaults to GITHUB_USER.
 
     """
-    __version__ = "0.5.0-d"
+    __version__ = "0.5.1-d"
 
     # Define options and arguments.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
@@ -430,7 +433,7 @@ You may also specify the ``DEFAULT_SCM`` environment variable to automatically u
     # ~/.pyprojectutils/repos/<repo>.ini
     path = os.path.join(REPO_META_PATH, args.repo_name + ".ini")
     if os.path.exists(path):
-        repo = Repo(args.repo_name, path=path)
+        repo = BaseRepo(args.repo_name, path=path)
         print_info("Using previously found repo: %s" % path)
     else:
 
@@ -457,17 +460,19 @@ You may also specify the ``DEFAULT_SCM`` environment variable to automatically u
 
         # Discover the repo.
         print_info("Attempting to auto-discover the repo based on your input ...")
-        repo = Repo(args.repo_name, host=host, user=args.user)
+        repo = BaseRepo(args.repo_name, host=host, user=args.user)
 
     # Download/clone the repo.
-    cmd = "(cd %s && %s)" % (args.project_home, repo.get_command())
-    print_info(cmd)
+    command = Command(repo.get_command(), path=args.project_home)
+    # cmd = "(cd %s && %s)" % (args.project_home, repo.get_command())
 
     if args.preview_only:
         status = 0
+        print_info(command.preview())
     else:
-        (status, output) = commands.getstatusoutput(cmd)
-        print(output)
+        command.run()
+        status = command.status
+        print(command.output)
 
     if status > 0:
         print_warning("Failed to download/clone the repo. Bummer.", EXIT_OTHER)
@@ -485,6 +490,149 @@ You may also specify the ``DEFAULT_SCM`` environment variable to automatically u
         pass
     else:
         repo.write()
+
+    # Quit.
+    sys.exit(EXIT_OK)
+
+
+def create_repo_command():
+    """Create a (remote) source code repo."""
+
+    # Define command meta data.
+    __author__ = "Shawn Davis <shawn@develmaycare.com>"
+    __date__ = "2017-03-19"
+    __help__ = """"""
+    __version__ = "0.2.0-d"
+
+    # Initialize the argument parser.
+    parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
+
+    parser.add_argument(
+        "project_name",
+        help="The name of the project. This defaults to the current directory name.",
+        nargs="?"
+    )
+
+    parser.add_argument(
+        "--cli=",
+        choices=["git", "hg", "svn"],
+        default="git",
+        dest="cli",
+        help="Specify the repo type."
+    )
+
+    parser.add_argument(
+        "-D=",
+        "--description=",
+        dest="description",
+        help="The description. Defaults to the contents of the DESCRIPTION.txt file if one is present."
+    )
+
+    parser.add_argument(
+        "--host=",
+        choices=["bitbucket", "bb", "github", "gh"],
+        default=DEFAULT_SCM,
+        dest="host",
+        help="The SCM provider. The abbreviation and full name are supported as shown. Defaults to the DEFAULT_SCM "
+             "environment variable."
+    )
+
+    parser.add_argument(
+        "--init",
+        action="store_true",
+        dest="init_enabled",
+        help="Also initialize a local repo for the project. This performs an init and add, but not a commit."
+    )
+
+    parser.add_argument(
+        "-I",
+        "--issues",
+        action="store_true",
+        dest="issues_enabled",
+        help="Indicates issues should be enabled for the repo."
+    )
+
+    parser.add_argument(
+        "--name=",
+        dest="repo_name",
+        help="The name of the repo. This defaults to the project name."
+    )
+
+    parser.add_argument(
+        "-P",
+        "--private",
+        action="store_true",
+        dest="is_private",
+        help="Indicates the repo is private."
+    )
+
+    # Access to the version number requires special consideration, especially
+    # when using sub parsers. The Python 3.3 behavior is different. See this
+    # answer: http://stackoverflow.com/questions/8521612/argparse-optional-subparser-for-version
+    # parser.add_argument('--version', action='version', version='%(prog)s 2.0')
+    parser.add_argument(
+        "-v",
+        action="version",
+        help="Show version number and exit.",
+        version=__version__
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        help="Show verbose version information and exit.",
+        version="%(prog)s" + " %s %s by %s" % (__version__, __date__, __author__)
+    )
+
+    # Parse arguments. Help, version, and usage errors are automatically handled.
+    args = parser.parse_args()
+
+    # Get the project name.
+    if args.project_name:
+        project_name = args.project_name
+    else:
+        project_name = os.path.basename(os.getcwd())
+
+    # Get the repo name.
+    if args.repo_name:
+        repo_name = args.repo_name
+    else:
+        repo_name = project_name
+
+    # Get the project instance.
+    project = Project(os.path.join(PROJECT_HOME, project_name))
+
+    if not project.path_exists("project.ini"):
+        print_warning("Cannot initialize a repo when the project.ini file is missing.", EXIT_OTHER)
+
+    # Attempt to automatically define the description.
+    if args.description:
+        description = args.description
+    else:
+        if project.description:
+            description = project.description
+        elif project.description_exists:
+            description = project.read_file("DESCRIPTION.txt")
+        else:
+            description = None
+
+    # Create the remote repo.
+    try:
+        create_remote_repo(
+            repo_name,
+            cli=args.cli,
+            description=description,
+            has_issues=args.issues_enabled,
+            is_private=args.is_private,
+            vendor=args.host
+        )
+    except NotImplementedError as e:
+        print_error(e.message, EXIT_INPUT)
+
+    # Initialize the local repo as requested.
+    if args.init_enabled:
+        meta_dir = ".%s" % args.cli
+        if not project.path_exists(meta_dir):
+            create_local_repo(project.root, cli=args.cli)
 
     # Quit.
     sys.exit(EXIT_OK)
@@ -652,8 +800,11 @@ We look for labels of ready, in progress, on hold, and review to determine the i
 
     # We also can't continue if PyGithub is not installed.
     try:
+        # noinspection PyPackageRequirements
         from github import Github
     except ImportError:
+        # noinspection PyPep8Naming
+        Github = None
         print_error("The PyGithub package is required to use this command: pip install pygithub", EXIT_OTHER)
 
     # This will display help or input errors as needed.
@@ -726,6 +877,7 @@ We look for labels of ready, in progress, on hold, and review to determine the i
             issues.append(",".join(columns))
 
     # Initialize the connection to github.
+    # noinspection PyUnboundLocalVariable
     gh = Github(GITHUB_USER, GITHUB_PASSWORD)
 
     # Seems like loading the user is required to get at the other data.
@@ -895,76 +1047,6 @@ We look for labels of ready, in progress, on hold, and review to determine the i
     sys.exit(EXIT_OK)
 
 
-def generate_password():
-    """Generate a random password."""
-
-    __author__ = "Shawn Davis <shawn@develmaycare.com>"
-    __date__ = "2016-12-11"
-    __help__ = """
-We often need to generate passwords automatically. This utility does just
-that. Install pyprojectutils during deployment to create passwords on the fly.
-    """
-    __version__ = "0.10.2-d"
-
-    # Define options and arguments.
-    parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
-
-    parser.add_argument(
-        "--format=",
-        choices=["crypt", "md5", "plain", "htpasswd"],
-        default="plain",
-        dest="format",
-        help="Choose the format of the output.",
-        nargs="?"
-    )
-    parser.add_argument("--strong", action="store_true", help="Make the password stronger.")
-    parser.add_argument(
-        "-U",
-        action="store_true",
-        dest="use_unambiguous",
-        help="Avoid ambiguous characters."
-    )
-
-    # Access to the version number requires special consideration, especially
-    # when using sub parsers. The Python 3.3 behavior is different. See this
-    # answer: http://stackoverflow.com/questions/8521612/argparse-optional-subparser-for-version
-    # parser.add_argument('--version', action='version', version='%(prog)s 2.0')
-    parser.add_argument(
-        "-v",
-        action="version",
-        help="Show version number and exit.",
-        version=__version__
-    )
-    parser.add_argument(
-        "--version",
-        action="version",
-        help="Show verbose version information and exit.",
-        version="%(prog)s" + " %s %s by %s" % (__version__, __date__, __author__)
-    )
-
-    # This will display help or input errors as needed.
-    args = parser.parse_args()
-    # print args
-
-    password_length = 10
-    if args.strong:
-        password_length = 20
-
-    password = RandomPassword(password_length, use_unambiguous=args.use_unambiguous)
-
-    if args.format == "crypt":
-        print(password.to_crypt())
-    elif args.format == "htpasswd":
-        print(password.to_htpasswd())
-    elif args.format == "md5":
-        print(password.to_md5())
-    else:
-        print(password.plain_text)
-
-    # Quit.
-    sys.exit(EXIT_OK)
-
-
 def hold_project_command():
     """Place a project on hold."""
 
@@ -1061,9 +1143,9 @@ def init_project_command():
 
     # Define command meta data.
     __author__ = "Shawn Davis <shawn@develmaycare.com>"
-    __date__ = "2017-03-12"
+    __date__ = "2017-03-16"
     __help__ = """"""
-    __version__ = "0.2.0-d"
+    __version__ = "0.2.1-d"
 
     # Initialize the argument parser.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
@@ -1182,13 +1264,7 @@ def init_project_command():
     args = parser.parse_args()
 
     # Deal with templates and template questions.
-    templates = {
-        'gitignore': None,
-        'ini': None,
-        'manifest': None,
-        'readme': None,
-        'requirements': None,
-    }
+    templates = dict()
     if args.templates:
         for i in args.templates:
             template_name, template_path = i.split(":")
@@ -1450,9 +1526,9 @@ def list_dependencies_command():
         for p in project.get_requirements(env=args.env, manager=args.manager):
             try:
                 output.append(p.to_plain())
-            except OutputError, e:
-                print(e)
-                sys.exit(EXIT_OTHER)
+            except OutputError as e:
+                print_error(e.message, EXIT_OTHER)
+
     elif args.output_format == "rst":
         output.append("********")
         output.append("Packages")
@@ -1487,12 +1563,13 @@ def list_dependencies_command():
                 % (p.title, p.manager, ", ".join(p.env))
             )
 
+    result = None
     if args.output_file:
         try:
             result = write_file(args.output_file, "\n".join(output))
-        except OutputError, e:
-            print(e)
-            sys.exit(EXIT_OTHER)
+        except OutputError as e:
+            print_error(e.message, EXIT_OTHER)
+
         if result:
             print("%s format written to %s." % (args.output_format, args.output_file))
         else:
@@ -1731,7 +1808,6 @@ The special --hold option may be used to list only projects that are on hold. Se
         color_enabled = False
 
     # Output according to the desired format.
-    output = ""
     if args.output_format == "csv":
         output = format_projects_for_csv(projects, include_columns=args.include_columns)
     elif args.output_format == "html":
@@ -1946,7 +2022,7 @@ def list_repos_command():
     """List source code repos that have been discovered by the checkoutproject command."""
 
     __author__ = "Shawn Davis <shawn@develmaycare.com>"
-    __date__ = "2017-02-07"
+    __date__ = "2017-03-20"
     __help__ = """FILTERING
 
 Use the -f/--filter option to by most project attributes:
@@ -1957,7 +2033,7 @@ Use the -f/--filter option to by most project attributes:
 - type (git, hg, svn)
 - user
 """
-    __version__ = "0.2.0-d"
+    __version__ = "0.2.1-d"
 
     # Define options and arguments.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
@@ -1978,12 +2054,12 @@ Use the -f/--filter option to by most project attributes:
         help="Specify filter in the form of key:value. This may be repeated. Use ? to list available values."
     )
 
-    parser.add_argument(
-        "--hold",
-        action="store_true",
-        dest="list_on_hold",
-        help="Only list projects that are on hold."
-    )
+    # parser.add_argument(
+    #     "--hold",
+    #     action="store_true",
+    #     dest="list_on_hold",
+    #     help="Only list projects that are on hold."
+    # )
 
     # parser.add_argument(
     #     "-p=",
@@ -2056,13 +2132,13 @@ Use the -f/--filter option to by most project attributes:
 
     # Print the column headings.
     print(
-        "%-30s %-30s %-15s %-15s %-20s %-15s %-5s"
-        % ("Name", "Project", "Type", "Host", "User", "Private", "")
+        "%-30s %-30s %-5s %-15s %-20s %-15s %-8s %-5s"
+        % ("Name", "Project", "Type", "Host", "User", "Private", "Location", "")
     )
     print("-" * 130)
 
     # Print the rows.
-    repos = get_repos(all=args.show_all, criteria=criteria, path=path)
+    repos, errors = get_repos(criteria=criteria, path=path, show_all=args.show_all)
 
     if len(repos) == 0:
         print("")
@@ -2077,10 +2153,10 @@ Use the -f/--filter option to by most project attributes:
         else:
             name = r.name
 
-        if len(r.project) > 30:
-            project = r.project[:27] + "..."
+        if r.project:
+            project_title = r.project.truncated_title()
         else:
-            project = r.project
+            project_title = r.name
 
         if r.has_error:
             error = "(e)"
@@ -2094,8 +2170,8 @@ Use the -f/--filter option to by most project attributes:
             private = "no"
 
         print(
-            "%-30s %-30s %-15s %-15s %-20s %-15s %-5s"
-            % (name, project, r.type, r.host, r.user, private, error)
+            "%-30s %-30s %-5s %-15s %-20s %-15s %-8s %-5s"
+            % (name, project_title, r.type, r.host, r.user, private, r.location, error)
         )
 
     if len(repos) == 1:
@@ -2110,6 +2186,9 @@ Use the -f/--filter option to by most project attributes:
     if error_count >= 1:
         print("(e) indicates an error.")
 
+    if len(errors) > 0:
+        print("\n".join(errors))
+
     # Quit.
     sys.exit(EXIT_OK)
 
@@ -2118,28 +2197,10 @@ def lorem_image_command():
     """Generate lorem image."""
 
     __author__ = "Shawn Davis <shawn@develmaycare.com>"
-    __date__ = "2017-03-14"
+    __date__ = "2017-03-19"
     __help__ = """
     """
-    __version__ = "0.1.0-d"
-
-    # Define image choices.
-    IMAGE_CHOICES = [
-        "abstract",
-        "animals",
-        "business",
-        "cats",
-        "city",
-        "food",
-        "nightlife",
-        "fashion",
-        "people",
-        "nature",
-        "sports",
-        "technics",
-        "transport",
-        "*",
-    ]
+    __version__ = "0.1.1-d"
 
     # Define options and arguments.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
@@ -2153,7 +2214,7 @@ def lorem_image_command():
     parser.add_argument(
         "-C=",
         "--category=",
-        choices=IMAGE_CHOICES,
+        choices=IMAGE_CATEGORIES,
         default="abstract",
         dest="image_category",
         help="The category of images to display."
@@ -2208,7 +2269,7 @@ def lorem_image_command():
     # Deal with random category.
     image_category = args.image_category
     if image_category == "*":
-        choices = IMAGE_CHOICES
+        choices = IMAGE_CATEGORIES
         choices.pop(-1)
 
         image_category = random.choice(choices)
@@ -2239,28 +2300,10 @@ def lorem_text_command():
     """Generate lorem text."""
 
     __author__ = "Shawn Davis <shawn@develmaycare.com>"
-    __date__ = "2017-03-14"
+    __date__ = "2017-03-19"
     __help__ = """
     """
-    __version__ = "0.1.0-d"
-
-    # Define image choices.
-    IMAGE_CHOICES = [
-        "abstract",
-        "animals",
-        "business",
-        "cats",
-        "city",
-        "food",
-        "nightlife",
-        "fashion",
-        "people",
-        "nature",
-        "sports",
-        "technics",
-        "transport",
-        "*",
-    ]
+    __version__ = "0.1.1-d"
 
     # Define options and arguments.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
@@ -2283,7 +2326,7 @@ def lorem_text_command():
 
     parser.add_argument(
         "--image-category=",
-        choices=IMAGE_CHOICES,
+        choices=IMAGE_CATEGORIES,
         default="abstract",
         dest="image_category",
         help="The lorempixel.com category of images when using --images option. Use * for random."
@@ -2381,7 +2424,7 @@ def lorem_text_command():
             image_category = args.image_category
 
             if args.image_category == "*":
-                choices = IMAGE_CHOICES
+                choices = IMAGE_CATEGORIES
                 choices.pop(-1)
 
                 image_category = random.choice(choices)
@@ -2440,26 +2483,31 @@ def project_help_command():
     )
 
     # This will display help or input errors as needed.
+    # noinspection PyUnusedLocal
     args = parser.parse_args()
     # print args
 
     # Iterate through the commands.
+    total_commands = 0
     for command_name in __all__:
         try:
             callback = globals()[command_name]
 
             tokens = command_name.split("_")
-            name = "%s%s" % (tokens[0], tokens[1])
+            if tokens[0] == "list":
+                name = "ls%s" % tokens[1]
+            else:
+                name = "%s%s" % (tokens[0], tokens[1])
 
-            # print("%s: %s" % (name, callback.__doc__))
-            # print("")
+            total_commands += 1
 
             print(name)
             print(callback.__doc__)
             print("")
-
         except KeyError:
             pass
+
+    print("%s commands." % total_commands)
 
     # Exit.
     sys.exit(EXIT_OK)
@@ -2704,6 +2752,76 @@ The special --hold option may be used to list only projects that are on hold. Se
             print("    cd %s/%s && git st" % (PROJECT_HOME, i))
     else:
         print("No projects with uncommitted changes.")
+
+    # Quit.
+    sys.exit(EXIT_OK)
+
+
+def random_password_command():
+    """Generate a random password."""
+
+    __author__ = "Shawn Davis <shawn@develmaycare.com>"
+    __date__ = "2016-12-11"
+    __help__ = """
+We often need to generate passwords automatically. This utility does just
+that. Install pyprojectutils during deployment to create passwords on the fly.
+    """
+    __version__ = "0.10.2-d"
+
+    # Define options and arguments.
+    parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
+
+    parser.add_argument(
+        "--format=",
+        choices=["crypt", "md5", "plain", "htpasswd"],
+        default="plain",
+        dest="format",
+        help="Choose the format of the output.",
+        nargs="?"
+    )
+    parser.add_argument("--strong", action="store_true", help="Make the password stronger.")
+    parser.add_argument(
+        "-U",
+        action="store_true",
+        dest="use_unambiguous",
+        help="Avoid ambiguous characters."
+    )
+
+    # Access to the version number requires special consideration, especially
+    # when using sub parsers. The Python 3.3 behavior is different. See this
+    # answer: http://stackoverflow.com/questions/8521612/argparse-optional-subparser-for-version
+    # parser.add_argument('--version', action='version', version='%(prog)s 2.0')
+    parser.add_argument(
+        "-v",
+        action="version",
+        help="Show version number and exit.",
+        version=__version__
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        help="Show verbose version information and exit.",
+        version="%(prog)s" + " %s %s by %s" % (__version__, __date__, __author__)
+    )
+
+    # This will display help or input errors as needed.
+    args = parser.parse_args()
+    # print args
+
+    password_length = 10
+    if args.strong:
+        password_length = 20
+
+    password = RandomPassword(password_length, use_unambiguous=args.use_unambiguous)
+
+    if args.format == "crypt":
+        print(password.to_crypt())
+    elif args.format == "htpasswd":
+        print(password.to_htpasswd())
+    elif args.format == "md5":
+        print(password.to_md5())
+    else:
+        print(password.plain_text)
 
     # Quit.
     sys.exit(EXIT_OK)

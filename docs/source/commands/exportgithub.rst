@@ -32,7 +32,7 @@ Environment Variables
 Issue Status
 ------------
 
-We look for labels of ``ready``, ``in progress``, ``on hold``, and ``review ``to determine the issue's current position
+We look for labels of ``ready``, ``in progress``, ``on hold``, and ``review`` to determine the issue's current position
 in the workflow.
 
 Output Formats

@@ -21,6 +21,11 @@ class Command(object):
 
     .. versionadded:: 0.27.0-d
 
+    .. note::
+        We are using ``shell=True`` to support piping and (possibly other) shell features. This is not advised due to
+        security concerns, but all commands are processed internally without user input, so we feel the risk is low.
+        See http://stackoverflow.com/a/13332300/241720
+
     """
 
     def __init__(self, string, path=None):
@@ -61,7 +66,7 @@ class Command(object):
 
     def raw(self):
         """Run the command without exception handling. Useful for debugging."""
-        self.output = check_output(self._tokens, cwd=self.path)
+        self.output = check_output(self._tokens, cwd=self.path, shell=True)
 
     def run(self):
         """Run the command.
@@ -70,7 +75,7 @@ class Command(object):
 
         """
         try:
-            self.output = check_output(self._tokens, cwd=self.path)
+            self.output = check_output(self._tokens, cwd=self.path, shell=True)
             self.status = 0
             return True
         except CalledProcessError as e:

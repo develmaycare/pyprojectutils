@@ -89,7 +89,7 @@ def find_file(name, path):
     :param path: The path to check. The function looks up to two directories above the given path.
     :type path: str
 
-    :rtype: str || None
+    :rtype: str | None
     :returns: The full file path or ``None`` if the file could not be found.
 
     .. versionadded:: 0.17.0-d

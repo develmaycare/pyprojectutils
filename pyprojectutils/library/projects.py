@@ -1693,7 +1693,7 @@ class Project(Config):
             try:
                 repo = GitRepo(self.root)
                 self.branch = repo.active_branch
-                self.is_dirty = repo.is_dirty()
+                self.is_dirty = repo.is_dirty(untracked_files=True)
             except InvalidGitRepositoryError:
                 self.branch = "unknown"
                 self._error = "Invalid git repository."

@@ -2,7 +2,7 @@
 
 from collections import OrderedDict
 import os
-from git import Repo as GitRepo
+from git import Repo as GitRepo, InvalidGitRepositoryError
 from .colors import cyan, green, red, yellow
 from .config import Config, Section
 from .constants import BITBUCKET_SCM, ENVIRONMENTS, GITHUB_SCM, LINK_CATEGORIES
@@ -1690,9 +1690,14 @@ class Project(Config):
         if self.path_exists(".git"):
 
             # Determine whether the repo is dirty and get the current branch name.
-            repo = GitRepo(self.root)
-            self.is_dirty = repo.is_dirty()
-            self.branch = repo.active_branch
+            try:
+                repo = GitRepo(self.root)
+                self.branch = repo.active_branch
+                self.is_dirty = repo.is_dirty()
+            except InvalidGitRepositoryError:
+                self.branch = "unknown"
+                self._error = "Invalid git repository."
+                self.is_dirty = None
 
             # See http://stackoverflow.com/a/5737794/241720
             # BUG: Command does not work with && or with path=.

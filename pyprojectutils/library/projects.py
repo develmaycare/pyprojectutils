@@ -1691,7 +1691,7 @@ class Project(Config):
 
             # Determine whether the repo is dirty and get the current branch name.
             repo = GitRepo(self.root)
-            self.is_dirty = repo.is_dirty()
+            self.is_dirty = repo.is_dirty(untracked_files=True)
             self.branch = repo.active_branch
 
             # See http://stackoverflow.com/a/5737794/241720

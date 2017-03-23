@@ -543,16 +543,16 @@ def format_projects_for_shell(projects, color_enabled=False, heading="Projects",
     """
     output = list()
 
-    output.append("=" * 130)
+    output.append("=" * 140)
     output.append(heading)
-    output.append("=" * 130)
+    output.append("=" * 140)
 
     # Print the column headings.
     output.append(
         "%-30s %-20s %-15s %-5s %-10s %-15s %-15s %-10s %-20s"
         % ("Title", "Category", "Type", "Org", "Version", "Stage", "Status", "Disk", "SCM")
     )
-    output.append("-" * 130)
+    output.append("-" * 140)
 
     # Print the rows.
     if len(projects) == 0:
@@ -567,10 +567,7 @@ def format_projects_for_shell(projects, color_enabled=False, heading="Projects",
     total_projects = len(projects)
     for p in projects:
 
-        if len(p.title) > 30:
-            title = p.title[:27] + "..."
-        else:
-            title = p.title
+        title = p.truncated_title()
 
         if p.config_exists:
             config_exists = ""
@@ -635,7 +632,7 @@ def format_projects_for_shell(projects, color_enabled=False, heading="Projects",
     else:
         label = "results"
 
-    output.append("-" * 130)
+    output.append("-" * 140)
     output.append("")
     output.append("%s %s." % (len(projects), label))
 
@@ -1636,12 +1633,12 @@ class Project(Config):
 
         """
         # There's nothing to do if the title is not over the limit.
-        if self.title <= limit:
+        if len(self.title) <= limit:
             return self.title
 
         # Adjust the limit according to the string length, otherwise we'll still be over.
         if string:
-            limit = limit - len(string)
+            limit -= len(string)
 
         # Return the altered title.
         return self.title[:limit] + string

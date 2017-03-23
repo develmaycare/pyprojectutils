@@ -1585,6 +1585,320 @@ def list_projects_command():
     """List projects managed on the local machine."""
 
     __author__ = "Shawn Davis <shawn@develmaycare.com>"
+    __date__ = "2017-03-22"
+    __help__ = """FILTERING
+
+Use the -f/--filter option to by most project attributes:
+
+- category
+- description (partial, case insensitive)
+- name (partial, case insensitive)
+- org (business/client code)
+- scm
+- tag
+- type
+
+The special --hold option may be used to list only projects that are on hold. See the holdproject command.
+
+"""
+    __version__ = "5.0.0-a"
+
+    # Define options and arguments.
+    parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
+
+    parser.add_argument(
+        "-a",
+        "--all",
+        action="store_true",
+        dest="show_all",
+        help="Show projects even if there is no project.ini file."
+    )
+
+    parser.add_argument(
+        "--active",
+        action="store_true",
+        dest="list_active",
+        help="Only list projects that are active."
+    )
+
+    parser.add_argument(
+        "--archive",
+        action="store_true",
+        dest="list_archive",
+        help="Only list projects that are staged for archiving."
+    )
+
+    parser.add_argument(
+        "--branch",
+        action="store_true",
+        dest="show_branch",
+        help="Show the current SCM branch name for each project."
+    )
+
+    # parser.add_argument(
+    #     "--color",
+    #     action="store_true",
+    #     dest="color_enabled",
+    #     help="Display the list in color-coded format."
+    # )
+
+    parser.add_argument(
+        "--columns",
+        action="store_true",
+        dest="include_columns",
+        help="Includes columns in CSV and HTML output."
+    )
+
+    parser.add_argument(
+        "--dirty",
+        action="store_true",
+        dest="show_dirty",
+        help="Only show projects with dirty repos."
+    )
+
+    parser.add_argument(
+        "-d",
+        "--disk",
+        action="store_true",
+        dest="include_disk",
+        help="Calculate disk space. Takes longer to run."
+    )
+
+    parser.add_argument(
+        "-f=",
+        "--filter=",
+        action="append",
+        dest="criteria",
+        help="Specify filter in the form of key:value. This may be repeated. Use ? to list available values."
+    )
+
+    parser.add_argument(
+        "--format=",
+        choices=["csv", "html", "shell"],
+        default="shell",
+        dest="output_format",
+        help="Output format. Defaults to plain shell."
+    )
+
+    parser.add_argument(
+        "--hold",
+        action="store_true",
+        dest="list_on_hold",
+        help="Only list projects that are on hold."
+    )
+
+    parser.add_argument(
+        "--html-classes",
+        default="table table-bordered table-striped",
+        dest="css_classes",
+        help="Table classes to use for HTML output."
+    )
+
+    parser.add_argument(
+        "--html-linked",
+        action="store_true",
+        dest="links_enabled",
+        help="Creates links to documentation or the project root for HTML output."
+    )
+
+    parser.add_argument(
+        "--html-wrapped",
+        action="store_true",
+        dest="wrapped",
+        help="Creates links to documentation or the project root for HTML output."
+    )
+
+    parser.add_argument(
+        "--lines",
+        action="store_true",
+        dest="lines_enabled",
+        help="Separate projects with a dotted line in shell output."
+    )
+
+    parser.add_argument(
+        "--no-color",
+        action="store_true",
+        dest="color_disabled",
+        help="Do NOT display the list in color-coded format."
+    )
+
+    parser.add_argument(
+        "-p=",
+        "--path=",
+        default=PROJECT_HOME,
+        dest="project_home",
+        help="Path to where projects are stored. Defaults to %s" % PROJECT_HOME
+    )
+
+    # Access to the version number requires special consideration, especially
+    # when using sub parsers. The Python 3.3 behavior is different. See this
+    # answer: http://stackoverflow.com/questions/8521612/argparse-optional-subparser-for-version
+    # parser.add_argument('--version', action='version', version='%(prog)s 2.0')
+    parser.add_argument(
+        "-v",
+        action="version",
+        help="Show version number and exit.",
+        version=__version__
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        help="Show verbose version information and exit.",
+        version="%(prog)s" + " %s %s by %s" % (__version__, __date__, __author__)
+    )
+
+    # Parse arguments. Help, version, and usage errors are automatically handled.
+    args = parser.parse_args()
+    # print args
+
+    # Get the path to where projects are stored.
+    if args.list_archive:
+        project_home = PROJECT_ARCHIVE
+    elif args.list_on_hold:
+        project_home = PROJECTS_ON_HOLD
+    else:
+        project_home = args.project_home
+
+    # Capture (and validate) filtering options.
+    criteria = dict()
+    if args.criteria:
+        for c in args.criteria:
+
+            # We need to test for the proper format of the each filter given.
+            try:
+                key, value = c.split(":")
+            except ValueError:
+                print_warning('Filter must be given in "key:value" format: %s' % c)
+                sys.exit(EXIT_INPUT)
+
+            # Handle requests to display available values by which filtering may occur. Otherwise, set criteria.
+            if value == "?":
+                print(key)
+                print("-" * 80)
+
+                d = get_distinct_project_attributes(key, path=project_home)
+                for name, count in d.items():
+                    print("%s (%s)" % (name, count))
+
+                print("")
+
+                sys.exit(EXIT_OK)
+            else:
+                criteria[key] = value
+
+    # Add criteria not included with the --filter option.
+    if args.show_dirty:
+        criteria['is_dirty'] = True
+
+    # Print the report heading.
+    if args.list_archive:
+        heading = "Archived"
+    elif args.list_on_hold:
+        heading = "On Hold"
+    elif args.list_active:
+        heading = "Active"
+    else:
+        heading = "Projects"
+
+    if "type" in criteria:
+        heading += " (%s)" % criteria['type']
+
+    # Get the projects.
+    if args.list_active:
+        projects = get_projects(
+            project_home,
+            criteria=criteria,
+            include_disk=args.include_disk,
+            show_all=args.show_all
+        )
+    elif args.list_archive:
+        projects = get_projects(
+            PROJECT_ARCHIVE,
+            criteria=criteria,
+            include_disk=args.include_disk,
+            show_all=args.show_all
+        )
+    elif args.list_on_hold:
+        projects = get_projects(
+            PROJECTS_ON_HOLD,
+            criteria=criteria,
+            include_disk=args.include_disk,
+            show_all=args.show_all
+        )
+    else:
+        projects = get_projects(
+            project_home,
+            criteria=criteria,
+            include_disk=args.include_disk,
+            show_all=args.show_all
+        )
+
+        projects += get_projects(
+            PROJECTS_ON_HOLD,
+            criteria=criteria,
+            include_disk=args.include_disk,
+            show_all=args.show_all
+        )
+
+        projects += get_projects(
+            PROJECT_ARCHIVE,
+            criteria=criteria,
+            include_disk=args.include_disk,
+            show_all=args.show_all
+        )
+
+    # Get the rows, placing projects in alphabetical order.
+    names = list()
+    rows = list()
+
+    for p in projects:
+        if p.name not in names:
+            names.append(p.name)
+
+    names.sort()
+
+    for name in names:
+        for p in projects:
+            if name != p.name:
+                continue
+
+            rows.append(p)
+
+    # Deal with color logic.
+    color_enabled = True
+    if args.color_disabled:
+        color_enabled = False
+
+    # Output according to the desired format.
+    if args.output_format == "csv":
+        output = format_projects_for_csv(rows, include_columns=args.include_columns)
+    elif args.output_format == "html":
+        output = format_projects_for_html(
+            rows,
+            css_classes=args.css_classes,
+            color_enabled=color_enabled,
+            heading=heading,
+            include_columns=args.include_columns,
+            links_enabled=args.links_enabled,
+            wrapped=args.wrapped
+        )
+    else:
+        output = format_projects_for_shell(
+            rows,
+            color_enabled=color_enabled,
+            heading=heading,
+            lines_enabled=args.lines_enabled,
+            show_branch=args.show_branch
+        )
+
+    print(output)
+
+
+# This is the original command before we started experimenting with showing all projects and stage versus status.
+def list_projects_command_v1():
+    """List projects managed on the local machine."""
+
+    __author__ = "Shawn Davis <shawn@develmaycare.com>"
     __date__ = "2017-03-10"
     __help__ = """FILTERING
 
@@ -1802,37 +2116,6 @@ The special --hold option may be used to list only projects that are on hold. Se
         show_all=args.show_all
     )
 
-    projects += get_projects(
-        PROJECTS_ON_HOLD,
-        criteria=criteria,
-        include_disk=args.include_disk,
-        show_all=args.show_all
-    )
-
-    projects += get_projects(
-        PROJECT_ARCHIVE,
-        criteria=criteria,
-        include_disk=args.include_disk,
-        show_all=args.show_all
-    )
-
-    # Get the rows, placing projects in alphabetical order.
-    names = list()
-    rows = list()
-
-    for p in projects:
-        if p.name not in names:
-            names.append(p.name)
-
-    names.sort()
-
-    for name in names:
-        for p in projects:
-            if name != p.name:
-                continue
-
-            rows.append(p)
-
     # Deal with color logic.
     color_enabled = True
     if args.color_disabled:
@@ -1853,7 +2136,7 @@ The special --hold option may be used to list only projects that are on hold. Se
         )
     else:
         output = format_projects_for_shell(
-            rows,
+            projects,
             color_enabled=color_enabled,
             heading=heading,
             lines_enabled=args.lines_enabled,

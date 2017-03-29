@@ -35,14 +35,14 @@ __all__ = (
 # Functions
 
 
-def create_local_repo(path, add=True, cli="git", commit=False, message="Initial Import"):
+def create_local_repo(project, add=True, cli="git", commit=False, message="Initial Import"):
     """Create a repo on the given path.
+
+    :param project: The project instance.
+    :type project: Project
 
     :param cli: The type of repo to create; ``git``, ``hg``, ``svn``.
     :type cli: str
-
-    :param path: The path to the repo (project).
-    :type path: str
 
     :param add: Whether to add existing files.
     :type add: bool
@@ -60,54 +60,22 @@ def create_local_repo(path, add=True, cli="git", commit=False, message="Initial 
     .. versionchanged:: 0.34.4-d
         Added ``cli`` parameter.
 
+    .. versionchanged:: 0.35.1-d
+        The ``path`` parameter was replaced with a ``project`` instance.
+
     .. note::
         Only git and hg are currently supported.
 
     """
-    # We can't do anything if the project does not exist.
-    if not os.path.exists(path):
-        raise InputError("Local repo path does not exist: %s" % path)
 
     # Get the repo instance.
-    repo = BaseRepo()
+    repo = BaseRepo(project.name, cli=cli, project=project)
 
-    # Run the init.
-    if cli == "git":
-        command = Command("git init", path=path)
-    elif cli == "hg":
-        command = Command("hg init", path=path)
-    else:
-        raise CommandFailed("Unsupported CLI: %s" % cli)
+    # Initialize the repo, passing along the parameters.
+    repo.init(add=add, commit=commit, message=message)
 
-    if not command.run():
-        raise CommandFailed("Failed to run %s: %s" % (command.string, command.output))
-
-    # Add files.
-    if add:
-        if cli == "git":
-            command = Command("git add .", path=path)
-        elif cli == "hg":
-            command = Command("hg add", path=path)
-        else:
-            raise CommandFailed("Unsupported CLI: %s" % cli)
-
-        if not command.run():
-            raise CommandFailed("Failed to run %s: %s" % (command.string, command.output))
-
-    # Commit.
-    if commit:
-        if cli == "git":
-            command = Command('git commit -m "%s"' % message)
-        elif cli == "hg":
-            command = Command('hg commit -m "%s"' % message)
-        else:
-            raise CommandFailed("Unsupported CLI: %s" % cli)
-
-        if not command.run():
-            raise CommandFailed("Failed to run %s: %s" % (command.string, command.output))
-
-    # Return the repo instance.
-    return BaseRepo(os.path.basename(path), cli=cli)
+    # Return the repo.
+    return repo
 
 
 def create_remote_repo(name, cli="git", description=None, has_issues=False, has_wiki=False, is_private=False,
@@ -665,15 +633,58 @@ class BaseRepo(Config):
         :param message: The commit message.
         :type message: str
 
-        :rtype: Repo
-
+        :rtype: bool
+        :raises: ``CommandFailed`` if the underlying commands fail.
+        :raises: ``InputError`` if a project instance was not given or project root does not exist.
+        :raises: ``ValueError`` if the repo type (cli) is unsupported.
+        
         .. versionadded:: 0.34.4-d
+
+        .. versionchanged:: 0.35.1-d
+            Correctly return ``bool`` instead of ``None`` (was previously documented as ``Repo``.)
 
         .. note::
             Only git is currently supported.
 
         """
-        raise NotImplementedError()
+
+        # We can't do anything if a project instance has not been provided.
+        if not self.project:
+            raise InputError("A Project instance is required.")
+
+        # Furthermore, just because we have a project instance, does not mean the project root exists.
+        if not os.path.exists(self.project.root):
+            raise InputError("Local repo path does not exist: %s" % self.project.root)
+
+        # Attempt to initialize the repo.
+        if self.cli == "git":
+            repo = GitRepo.init(self.project.root)
+
+            if add:
+                repo.git.add(".")
+
+            if commit:
+                repo.index.commit(message)
+
+            return True
+        elif self.cli == "hg":
+            command = Command("hg init", path=self.project.root)
+            if not command.run():
+                raise CommandFailed("Command failed: %s" % command.preview())
+
+            if add:
+                command = Command("hg add .", path=self.project.root)
+                if not command.run():
+                    raise CommandFailed("Command failed: %s" % command.preview())
+
+            if commit:
+                command = Command('hg commit -m "%s"' % message)
+                if not command.run():
+                    raise CommandFailed("Command failed: %s" % command.preview())
+
+            return True
+        else:
+            raise ValueError("Unsupported repo type (cli): %s" % self.cli)
 
     @property
     def specific(self):

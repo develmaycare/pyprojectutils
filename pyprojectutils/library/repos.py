@@ -11,6 +11,7 @@ import json
 import os
 # noinspection PyCompatibility
 import urllib2
+from git import Repo as GitRepo
 # noinspection PyPackageRequirements
 from github import Github
 from .config import Config
@@ -66,6 +67,9 @@ def create_local_repo(path, add=True, cli="git", commit=False, message="Initial 
     # We can't do anything if the project does not exist.
     if not os.path.exists(path):
         raise InputError("Local repo path does not exist: %s" % path)
+
+    # Get the repo instance.
+    repo = BaseRepo()
 
     # Run the init.
     if cli == "git":
@@ -587,8 +591,33 @@ class BaseRepo(Config):
             self.is_local = False
             self.location = "remote"
 
+    def clone(self, path=PROJECT_HOME):
+        """Checkout (clone) the project from the remote. Basic functionality is provided, but child classes may override
+        as needed.
+        
+        :param path: The path to where the repo should be cloned. The repo (project) name will be added as needed.
+        :type path: str
+        
+        :rtype: bool
+        :raises: ``ValueError`` when the repo type (cli) is unsupported.
+        
+        .. version-added:: 0.35.1-p
+        
+        """
+        if self.cli == "git":
+            path = os.path.join(path, self.name)
+            GitRepo.clone_from(self.get_url(), path)
+            return True
+        elif self.cli == "hg":
+            command = Command("hg clone %s" % self.get_url(), path=path)
+            return command.run()
+        else:
+            raise ValueError("Unsupported repo type: %s" % self.cli)
+
+        return False
+
     def create(self):
-        """Create a remote repo.
+        """Create a remote repo. Child classes must implement this method.
 
         .. versionadded:: 0.34.0-d
 
@@ -645,6 +674,50 @@ class BaseRepo(Config):
 
         """
         raise NotImplementedError()
+
+    @property
+    def specific(self):
+        """Get the repo as a specific repo class.
+        
+        .. note::
+            Allows a repo to be initialized without first knowing the specific host.
+        
+        :rtype: BitbucketRepo | GitHubRepo | BaseRepo
+        
+        .. version-added:: 0.35.1-d
+        
+        """
+        attributes = (
+            "cli",
+            "description",
+            "has_issues",
+            "has_wiki",
+            "is_loaded",
+            "is_private",
+            "path",
+            "project",
+            "user",
+        )
+
+        if self.host == BITBUCKET_SCM:
+            instance = BitbucketRepo(self.name, host=BITBUCKET_SCM)
+
+            for name in attributes:
+                value = getattr(self, name)
+                setattr(instance, name, value)
+
+            return instance
+
+        elif self.host == GITHUB_SCM:
+            instance = GitHubRepo(self.name, host=GITHUB_SCM)
+
+            for name in attributes:
+                value = getattr(self, name)
+                setattr(instance, name, value)
+
+            return instance
+        else:
+            return self
 
     def to_string(self):
 
@@ -740,6 +813,11 @@ class BitbucketRepo(BaseRepo):
         return True
 
     def create(self):
+        """Create a repo on bitbucket.org.
+        
+        .. versionadded:: 0.34.0-d
+        
+        """
 
         # Assemble the data.
         data = {
@@ -772,6 +850,8 @@ class BitbucketRepo(BaseRepo):
         :raises: urllib2.HTTPError
 
         """
+
+        # TODO: fetch() is a poor naming choice.
 
         # Get results from the API.
         request = urllib2.Request("https://api.bitbucket.org/1.0/user/repositories/")
@@ -828,6 +908,8 @@ class GitHubRepo(BaseRepo):
 
         """
 
+        # TODO: fetch() is a poor naming choice.
+
         # Initialize the connection to github.
         gh = Github(GITHUB_USER, GITHUB_PASSWORD)
 
@@ -847,11 +929,41 @@ class GitHubRepo(BaseRepo):
 
         return repos
 
-    def init(self, add=True, commit=False, message="Initial Import"):
+    def create(self):
+        """Create a repo on github.com.
+        
+        .. versionadded:: 0.34.0-d
+        
+        .. version-changed:: 0.35.1-d
+            Added support for ``has_wiki``.
+        
         """
 
-        :raise: CommandFailed
+        try:
+            # noinspection PyPackageRequirements
+            from github import Github
+        except ImportError:
+            # noinspection PyPep8Naming,PyUnusedLocal,PyUnusedLocal,SpellCheckingInspection,PyShadowingNames
+            Github = None
+            raise ResourceUnavailable("PyGithub is required: pip install pygithub")
 
+        # Load the API and get the authenticated user.
+        gh = Github(GITHUB_USER, GITHUB_PASSWORD)
+        user = gh.get_user()
+
+        # Create the repo.
+        # noinspection PyUnresolvedReferences
+        user.create_repo(
+            self.name,
+            description=self.description,
+            private=self.is_private,
+            has_issues=self.has_issues,
+            has_wiki=self.has_wiki
+        )
+
+    def init(self, add=True, commit=False, message="Initial Import"):
+        """
+        :raise: CommandFailed
         """
 
         if not self.project:
@@ -875,26 +987,3 @@ class GitHubRepo(BaseRepo):
                 raise CommandFailed("Failed to run git commit: %s" % command.output)
 
         return True
-
-    def create(self):
-
-        try:
-            # noinspection PyPackageRequirements
-            from github import Github
-        except ImportError:
-            # noinspection PyPep8Naming,PyUnusedLocal,PyUnusedLocal,SpellCheckingInspection,PyShadowingNames
-            Github = None
-            raise ResourceUnavailable("PyGithub is required: pip install pygithub")
-
-        # Load the API and get the authenticated user.
-        gh = Github(GITHUB_USER, GITHUB_PASSWORD)
-        user = gh.get_user()
-
-        # Create the repo.
-        user.create_repo(
-            self.name,
-            description=self.description,
-            private=self.is_private,
-            has_issues=self.has_issues
-        )
-

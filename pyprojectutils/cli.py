@@ -344,7 +344,7 @@ def checkout_project_command():
     """Check out a project from a source code repository."""
 
     __author__ = "Shawn Davis <shawn@develmaycare.com>"
-    __date__ = "2017-03-20"
+    __date__ = "2017-03-29"
     __help__ = """NOTES
 
 Only Git repos are currently supported.
@@ -359,7 +359,7 @@ You may also specify the ``DEFAULT_SCM`` environment variable to automatically u
 ``DEFAULT_SCM`` itself defaults to GITHUB_USER.
 
     """
-    __version__ = "0.5.1-d"
+    __version__ = "0.6.0-d"
 
     # Define options and arguments.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
@@ -430,10 +430,10 @@ You may also specify the ``DEFAULT_SCM`` environment variable to automatically u
             print_warning("Project already exists in the %s directory: %s" % (location_name, location_path), EXIT_OTHER)
 
     # If the repo has already been discovered we'll use that URL, otherwise use the provider to assemble the URL.
-    # ~/.pyprojectutils/repos/<repo>.ini
+    # ~/.repos/<repo>.ini
     path = os.path.join(REPO_META_PATH, args.repo_name + ".ini")
     if os.path.exists(path):
-        repo = BaseRepo(args.repo_name, path=path)
+        base_repo = BaseRepo(args.repo_name, path=path)
         print_info("Using previously found repo: %s" % path)
     else:
 
@@ -450,6 +450,7 @@ You may also specify the ``DEFAULT_SCM`` environment variable to automatically u
 
             if not user:
                 print_warning("BITBUCKET_USER is not defined.", EXIT_OTHER)
+
         elif host in ("github", "gh"):
             user = args.user or GITHUB_USER
 
@@ -460,19 +461,20 @@ You may also specify the ``DEFAULT_SCM`` environment variable to automatically u
 
         # Discover the repo.
         print_info("Attempting to auto-discover the repo based on your input ...")
-        repo = BaseRepo(args.repo_name, host=host, user=args.user)
+        base_repo = BaseRepo(args.repo_name, host=host, user=args.user)
+
+    # Get the specific repo instance based on the host.
+    repo = base_repo.specific
 
     # Download/clone the repo.
-    command = Command(repo.get_command(), path=args.project_home)
-    # cmd = "(cd %s && %s)" % (args.project_home, repo.get_command())
-
     if args.preview_only:
-        status = 0
-        print_info(command.preview())
+        status = EXIT_OK
+        print_info(repo.get_command())
     else:
-        command.run()
-        status = command.status
-        print(command.output)
+        if repo.clone(path=args.project_home):
+            status = EXIT_OK
+        else:
+            status = EXIT_OTHER
 
     if status > 0:
         print_warning("Failed to download/clone the repo. Bummer.", EXIT_OTHER)

@@ -11,6 +11,7 @@ import json
 import os
 # noinspection PyCompatibility
 import urllib2
+from git import Repo as GitRepo
 # noinspection PyPackageRequirements
 from github import Github
 from .config import Config
@@ -34,14 +35,14 @@ __all__ = (
 # Functions
 
 
-def create_local_repo(path, add=True, cli="git", commit=False, message="Initial Import"):
+def create_local_repo(project, add=True, cli="git", commit=False, message="Initial Import"):
     """Create a repo on the given path.
+
+    :param project: The project instance.
+    :type project: Project
 
     :param cli: The type of repo to create; ``git``, ``hg``, ``svn``.
     :type cli: str
-
-    :param path: The path to the repo (project).
-    :type path: str
 
     :param add: Whether to add existing files.
     :type add: bool
@@ -59,51 +60,22 @@ def create_local_repo(path, add=True, cli="git", commit=False, message="Initial 
     .. versionchanged:: 0.34.4-d
         Added ``cli`` parameter.
 
+    .. versionchanged:: 0.35.1-d
+        The ``path`` parameter was replaced with a ``project`` instance.
+
     .. note::
         Only git and hg are currently supported.
 
     """
-    # We can't do anything if the project does not exist.
-    if not os.path.exists(path):
-        raise InputError("Local repo path does not exist: %s" % path)
 
-    # Run the init.
-    if cli == "git":
-        command = Command("git init", path=path)
-    elif cli == "hg":
-        command = Command("hg init", path=path)
-    else:
-        raise CommandFailed("Unsupported CLI: %s" % cli)
+    # Get the repo instance.
+    repo = BaseRepo(project.name, cli=cli, project=project)
 
-    if not command.run():
-        raise CommandFailed("Failed to run %s: %s" % (command.string, command.output))
+    # Initialize the repo, passing along the parameters.
+    repo.init(add=add, commit=commit, message=message)
 
-    # Add files.
-    if add:
-        if cli == "git":
-            command = Command("git add .", path=path)
-        elif cli == "hg":
-            command = Command("hg add", path=path)
-        else:
-            raise CommandFailed("Unsupported CLI: %s" % cli)
-
-        if not command.run():
-            raise CommandFailed("Failed to run %s: %s" % (command.string, command.output))
-
-    # Commit.
-    if commit:
-        if cli == "git":
-            command = Command('git commit -m "%s"' % message)
-        elif cli == "hg":
-            command = Command('hg commit -m "%s"' % message)
-        else:
-            raise CommandFailed("Unsupported CLI: %s" % cli)
-
-        if not command.run():
-            raise CommandFailed("Failed to run %s: %s" % (command.string, command.output))
-
-    # Return the repo instance.
-    return BaseRepo(os.path.basename(path), cli=cli)
+    # Return the repo.
+    return repo
 
 
 def create_remote_repo(name, cli="git", description=None, has_issues=False, has_wiki=False, is_private=False,
@@ -587,8 +559,33 @@ class BaseRepo(Config):
             self.is_local = False
             self.location = "remote"
 
+    def clone(self, path=PROJECT_HOME):
+        """Checkout (clone) the project from the remote. Basic functionality is provided, but child classes may override
+        as needed.
+        
+        :param path: The path to where the repo should be cloned. The repo (project) name will be added as needed.
+        :type path: str
+        
+        :rtype: bool
+        :raises: ``ValueError`` when the repo type (cli) is unsupported.
+        
+        .. version-added:: 0.35.1-p
+        
+        """
+        if self.cli == "git":
+            path = os.path.join(path, self.name)
+            GitRepo.clone_from(self.get_url(), path)
+            return True
+        elif self.cli == "hg":
+            command = Command("hg clone %s" % self.get_url(), path=path)
+            return command.run()
+        else:
+            raise ValueError("Unsupported repo type: %s" % self.cli)
+
+        return False
+
     def create(self):
-        """Create a remote repo.
+        """Create a remote repo. Child classes must implement this method.
 
         .. versionadded:: 0.34.0-d
 
@@ -636,15 +633,102 @@ class BaseRepo(Config):
         :param message: The commit message.
         :type message: str
 
-        :rtype: Repo
-
+        :rtype: bool
+        :raises: ``CommandFailed`` if the underlying commands fail.
+        :raises: ``InputError`` if a project instance was not given or project root does not exist.
+        :raises: ``ValueError`` if the repo type (cli) is unsupported.
+        
         .. versionadded:: 0.34.4-d
+
+        .. versionchanged:: 0.35.1-d
+            Correctly return ``bool`` instead of ``None`` (was previously documented as ``Repo``.)
 
         .. note::
             Only git is currently supported.
 
         """
-        raise NotImplementedError()
+
+        # We can't do anything if a project instance has not been provided.
+        if not self.project:
+            raise InputError("A Project instance is required.")
+
+        # Furthermore, just because we have a project instance, does not mean the project root exists.
+        if not os.path.exists(self.project.root):
+            raise InputError("Local repo path does not exist: %s" % self.project.root)
+
+        # Attempt to initialize the repo.
+        if self.cli == "git":
+            repo = GitRepo.init(self.project.root)
+
+            if add:
+                repo.git.add(".")
+
+            if commit:
+                repo.index.commit(message)
+
+            return True
+        elif self.cli == "hg":
+            command = Command("hg init", path=self.project.root)
+            if not command.run():
+                raise CommandFailed("Command failed: %s" % command.preview())
+
+            if add:
+                command = Command("hg add .", path=self.project.root)
+                if not command.run():
+                    raise CommandFailed("Command failed: %s" % command.preview())
+
+            if commit:
+                command = Command('hg commit -m "%s"' % message)
+                if not command.run():
+                    raise CommandFailed("Command failed: %s" % command.preview())
+
+            return True
+        else:
+            raise ValueError("Unsupported repo type (cli): %s" % self.cli)
+
+    @property
+    def specific(self):
+        """Get the repo as a specific repo class.
+        
+        .. note::
+            Allows a repo to be initialized without first knowing the specific host.
+        
+        :rtype: BitbucketRepo | GitHubRepo | BaseRepo
+        
+        .. version-added:: 0.35.1-d
+        
+        """
+        attributes = (
+            "cli",
+            "description",
+            "has_issues",
+            "has_wiki",
+            "is_loaded",
+            "is_private",
+            "path",
+            "project",
+            "user",
+        )
+
+        if self.host == BITBUCKET_SCM:
+            instance = BitbucketRepo(self.name, host=BITBUCKET_SCM)
+
+            for name in attributes:
+                value = getattr(self, name)
+                setattr(instance, name, value)
+
+            return instance
+
+        elif self.host == GITHUB_SCM:
+            instance = GitHubRepo(self.name, host=GITHUB_SCM)
+
+            for name in attributes:
+                value = getattr(self, name)
+                setattr(instance, name, value)
+
+            return instance
+        else:
+            return self
 
     def to_string(self):
 
@@ -740,6 +824,11 @@ class BitbucketRepo(BaseRepo):
         return True
 
     def create(self):
+        """Create a repo on bitbucket.org.
+        
+        .. versionadded:: 0.34.0-d
+        
+        """
 
         # Assemble the data.
         data = {
@@ -772,6 +861,8 @@ class BitbucketRepo(BaseRepo):
         :raises: urllib2.HTTPError
 
         """
+
+        # TODO: fetch() is a poor naming choice.
 
         # Get results from the API.
         request = urllib2.Request("https://api.bitbucket.org/1.0/user/repositories/")
@@ -828,6 +919,8 @@ class GitHubRepo(BaseRepo):
 
         """
 
+        # TODO: fetch() is a poor naming choice.
+
         # Initialize the connection to github.
         gh = Github(GITHUB_USER, GITHUB_PASSWORD)
 
@@ -847,11 +940,41 @@ class GitHubRepo(BaseRepo):
 
         return repos
 
-    def init(self, add=True, commit=False, message="Initial Import"):
+    def create(self):
+        """Create a repo on github.com.
+        
+        .. versionadded:: 0.34.0-d
+        
+        .. version-changed:: 0.35.1-d
+            Added support for ``has_wiki``.
+        
         """
 
-        :raise: CommandFailed
+        try:
+            # noinspection PyPackageRequirements
+            from github import Github
+        except ImportError:
+            # noinspection PyPep8Naming,PyUnusedLocal,PyUnusedLocal,SpellCheckingInspection,PyShadowingNames
+            Github = None
+            raise ResourceUnavailable("PyGithub is required: pip install pygithub")
 
+        # Load the API and get the authenticated user.
+        gh = Github(GITHUB_USER, GITHUB_PASSWORD)
+        user = gh.get_user()
+
+        # Create the repo.
+        # noinspection PyUnresolvedReferences
+        user.create_repo(
+            self.name,
+            description=self.description,
+            private=self.is_private,
+            has_issues=self.has_issues,
+            has_wiki=self.has_wiki
+        )
+
+    def init(self, add=True, commit=False, message="Initial Import"):
+        """
+        :raise: CommandFailed
         """
 
         if not self.project:
@@ -875,26 +998,3 @@ class GitHubRepo(BaseRepo):
                 raise CommandFailed("Failed to run git commit: %s" % command.output)
 
         return True
-
-    def create(self):
-
-        try:
-            # noinspection PyPackageRequirements
-            from github import Github
-        except ImportError:
-            # noinspection PyPep8Naming,PyUnusedLocal,PyUnusedLocal,SpellCheckingInspection,PyShadowingNames
-            Github = None
-            raise ResourceUnavailable("PyGithub is required: pip install pygithub")
-
-        # Load the API and get the authenticated user.
-        gh = Github(GITHUB_USER, GITHUB_PASSWORD)
-        user = gh.get_user()
-
-        # Create the repo.
-        user.create_repo(
-            self.name,
-            description=self.description,
-            private=self.is_private,
-            has_issues=self.has_issues
-        )
-

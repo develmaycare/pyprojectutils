@@ -12,10 +12,12 @@ You may find these `Cookiecutter`_ templates useful.
 
 - `Ansible for Django`_: Add a deploy directory to your Django project.
 - `Django App (Full)`_: A Django app with all of the trimmings.
+- `Python CLI`_: Create a Python command line utility. Examples included.
 - `Static Website`_: A simple static website.
 
 .. _Ansible for Django: https://github.com/develmaycare/cookiecutter-ansible-django
 .. _Django App (Full): https://github.com/develmaycare/cookiecutter-django-app-full
+.. _Python CLI: https://github.com/develmaycare/cookiecutter-python-cli
 .. _Static Website: https://github.com/develmaycare/cookiecutter-static-website
 .. _Cookiecutter: http://cookiecutter.readthedocs.io/en/latest/
 

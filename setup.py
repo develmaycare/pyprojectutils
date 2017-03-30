@@ -19,6 +19,7 @@ setup(
     author_email='shawn@develmaycare.com',
     url='https://github.com/develmaycare/pyprojectutils',
     packages=find_packages(),
+    include_package_data=True,
     install_requires=[
         "gitpython",
         "jinja2",

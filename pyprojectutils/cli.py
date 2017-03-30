@@ -344,7 +344,7 @@ def checkout_project_command():
     """Check out a project from a source code repository."""
 
     __author__ = "Shawn Davis <shawn@develmaycare.com>"
-    __date__ = "2017-03-20"
+    __date__ = "2017-03-29"
     __help__ = """NOTES
 
 Only Git repos are currently supported.
@@ -359,7 +359,7 @@ You may also specify the ``DEFAULT_SCM`` environment variable to automatically u
 ``DEFAULT_SCM`` itself defaults to GITHUB_USER.
 
     """
-    __version__ = "0.5.1-d"
+    __version__ = "0.6.0-d"
 
     # Define options and arguments.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
@@ -430,10 +430,10 @@ You may also specify the ``DEFAULT_SCM`` environment variable to automatically u
             print_warning("Project already exists in the %s directory: %s" % (location_name, location_path), EXIT_OTHER)
 
     # If the repo has already been discovered we'll use that URL, otherwise use the provider to assemble the URL.
-    # ~/.pyprojectutils/repos/<repo>.ini
+    # ~/.repos/<repo>.ini
     path = os.path.join(REPO_META_PATH, args.repo_name + ".ini")
     if os.path.exists(path):
-        repo = BaseRepo(args.repo_name, path=path)
+        base_repo = BaseRepo(args.repo_name, path=path)
         print_info("Using previously found repo: %s" % path)
     else:
 
@@ -450,6 +450,7 @@ You may also specify the ``DEFAULT_SCM`` environment variable to automatically u
 
             if not user:
                 print_warning("BITBUCKET_USER is not defined.", EXIT_OTHER)
+
         elif host in ("github", "gh"):
             user = args.user or GITHUB_USER
 
@@ -460,19 +461,20 @@ You may also specify the ``DEFAULT_SCM`` environment variable to automatically u
 
         # Discover the repo.
         print_info("Attempting to auto-discover the repo based on your input ...")
-        repo = BaseRepo(args.repo_name, host=host, user=args.user)
+        base_repo = BaseRepo(args.repo_name, host=host, user=args.user)
+
+    # Get the specific repo instance based on the host.
+    repo = base_repo.specific
 
     # Download/clone the repo.
-    command = Command(repo.get_command(), path=args.project_home)
-    # cmd = "(cd %s && %s)" % (args.project_home, repo.get_command())
-
     if args.preview_only:
-        status = 0
-        print_info(command.preview())
+        status = EXIT_OK
+        print_info(repo.get_command())
     else:
-        command.run()
-        status = command.status
-        print(command.output)
+        if repo.clone(path=args.project_home):
+            status = EXIT_OK
+        else:
+            status = EXIT_OTHER
 
     if status > 0:
         print_warning("Failed to download/clone the repo. Bummer.", EXIT_OTHER)
@@ -500,9 +502,13 @@ def create_repo_command():
 
     # Define command meta data.
     __author__ = "Shawn Davis <shawn@develmaycare.com>"
-    __date__ = "2017-03-19"
-    __help__ = """"""
-    __version__ = "0.2.0-d"
+    __date__ = "2017-03-29"
+    __help__ = """
+Initializing the repo is provided a convenience since this is a common next step. However, this command will not add 
+the origin or push the code or otherwise edit the repo configuration. That's asking a lot, and by the time the other 
+work is done, the command is tired.
+    """
+    __version__ = "0.3.0-d"
 
     # Initialize the argument parser.
     parser = ArgumentParser(description=__doc__, epilog=__help__, formatter_class=RawDescriptionHelpFormatter)
@@ -514,11 +520,33 @@ def create_repo_command():
     )
 
     parser.add_argument(
+        "-A",
+        action="store_true",
+        dest="add_existing",
+        help="Also add existing files when using the --init option."
+    )
+
+    parser.add_argument(
+        "-C",
+        action="store_true",
+        dest="commit_existing",
+        help="Also commit when using the --init and -A options. See --commit."
+    )
+
+    parser.add_argument(
         "--cli=",
         choices=["git", "hg", "svn"],
         default="git",
         dest="cli",
         help="Specify the repo type."
+    )
+
+    parser.add_argument(
+        "--commit=",
+        default="Initial Import",
+        dest="commit_message",
+        help="The commit message.",
+        nargs="?"
     )
 
     parser.add_argument(
@@ -566,6 +594,14 @@ def create_repo_command():
         help="Indicates the repo is private."
     )
 
+    parser.add_argument(
+        "-W",
+        "--wiki",
+        action="store_true",
+        dest="wiki_enabled",
+        help="Indicates the wiki should be enabled for the repo."
+    )
+
     # Access to the version number requires special consideration, especially
     # when using sub parsers. The Python 3.3 behavior is different. See this
     # answer: http://stackoverflow.com/questions/8521612/argparse-optional-subparser-for-version
@@ -585,6 +621,7 @@ def create_repo_command():
 
     # Parse arguments. Help, version, and usage errors are automatically handled.
     args = parser.parse_args()
+    # print args
 
     # Get the project name.
     if args.project_name:
@@ -604,6 +641,8 @@ def create_repo_command():
     if not project.path_exists("project.ini"):
         print_warning("Cannot initialize a repo when the project.ini file is missing.", EXIT_OTHER)
 
+    project.load()
+
     # Attempt to automatically define the description.
     if args.description:
         description = args.description
@@ -616,12 +655,14 @@ def create_repo_command():
             description = None
 
     # Create the remote repo.
+    print_info("Creating the remote repo.")
     try:
         create_remote_repo(
             repo_name,
             cli=args.cli,
             description=description,
             has_issues=args.issues_enabled,
+            has_wiki=args.wiki_enabled,
             is_private=args.is_private,
             vendor=args.host
         )
@@ -632,7 +673,14 @@ def create_repo_command():
     if args.init_enabled:
         meta_dir = ".%s" % args.cli
         if not project.path_exists(meta_dir):
-            create_local_repo(project.root, cli=args.cli)
+            print_info("Initializing the local repo.")
+            create_local_repo(
+                project,
+                add=args.add_existing,
+                cli=args.cli,
+                commit=args.commit_existing,
+                message=args.commit_message
+            )
 
     # Quit.
     sys.exit(EXIT_OK)
